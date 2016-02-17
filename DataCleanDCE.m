@@ -148,7 +148,7 @@ if isfield(EstimOpt, 'ConstVarActive') == 0 || EstimOpt.ConstVarActive == 0 % no
 	OptimOpt.Algorithm = 'quasi-newton'; %'trust-region';   
 elseif EstimOpt.ConstVarActive == 1 % there are some constraints on parameters
     OptimOpt = optimoptions('fmincon');
-    OptimOpt.Algorithm = 'interior-point'; %'sqp'; 'trust-region-reflective';
+    OptimOpt.Algorithm = 'interior-point'; %'sqp'; 'active-set'; 'trust-region-reflective';
 end
 
 
