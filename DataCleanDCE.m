@@ -189,6 +189,7 @@ INPUT_0.Xs = double.empty(size(INPUT_0.Y,1),0);
 INPUT_0.MissingInd = INPUT.MissingInd;
 EstimOpt_0 = EstimOpt;
 EstimOpt_0.ConstVarActive = 0;
+EstimOpt_0.BActive = [];
 EstimOpt_0.NVarA = EstimOpt.NAlt - 1;
 EstimOpt_0.NVarS = 0;
 EstimOpt_0.OPTIM = 1;
