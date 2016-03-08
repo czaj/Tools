@@ -93,7 +93,10 @@ end
 % INPUT.Xa(isnan(INPUT.MissingInd),:) = NaN; % exp(X*B) do not influence U_sum
 
 EstimOpt.NObs = sum(INPUT.TIMES);
- 
+
+INPUT.W = INPUT.W(INPUT.Y==1);
+INPUT.W = INPUT.W - mean(INPUT.W) + 1;
+
 EstimOpt.NVarA = size(INPUT.Xa,2); % Number of attributes
    
 if isfield(EstimOpt,'HaltonSkip') == 0
