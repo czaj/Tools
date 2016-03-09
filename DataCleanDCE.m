@@ -31,15 +31,15 @@ if sum(INPUT.MissingInd) == 0
 else
     MissingInd_tmp = reshape(INPUT.MissingInd,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
     MissingCT = sum(MissingInd_tmp,1) == EstimOpt.NAlt; % missing NCT
-    MissingP = sum(MissingCT,2) == EstimOpt.NCT; % respondents with all NCT missing 
+    MissingP = sum(MissingCT,2) == EstimOpt.NCT; % respondents with all NCT missing
     
     if sum(MissingP) > 0 % respondents with 0 NCTs - remove from INPUT
         MissingPrep = reshape(MissingP(ones(EstimOpt.NAlt,1,1),ones(1,EstimOpt.NCT,1),:),EstimOpt.NAlt*EstimOpt.NCT*EstimOpt.NP,1);
         INPUT_fields = fields(INPUT);
         for i = 1:size(INPUT_fields,1)
             tmp = INPUT.(INPUT_fields{i}); ...
-            tmp(MissingPrep,:) = []; ...
-            INPUT.(INPUT_fields{i}) = tmp;
+                tmp(MissingPrep,:) = []; ...
+                INPUT.(INPUT_fields{i}) = tmp;
         end
         %cprintf(rgb('DarkOrange'), 'WARNING: Dataset includes %d respondents with 0 completed choice tasks. Adjusting NP from %d to %d .\n', sum(MissingP), EstimOpt.NP, EstimOpt.NP-sum(MissingP))
         cprintf(rgb('DarkOrange'), ['WARNING: Dataset includes ', num2str(sum(MissingP)), ' respondents with 0 completed choice tasks. Adjusting NP from ', num2str(EstimOpt.NP), ' to ',num2str(EstimOpt.NP-sum(MissingP)) ,'.\n'])
@@ -55,29 +55,29 @@ else
     Y_tmp = reshape(INPUT.Y,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
     Y_tmp(MissingCT(ones(EstimOpt.NAlt,1,1),:,:)) = NaN;
     Xa_tmp = reshape(INPUT.Xa,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP,size(INPUT.Xa,2));
-	Xa_tmp(MissingCT(ones(EstimOpt.NAlt,1,1,1),:,:,ones(1,1,1,size(Xa_tmp,4)))) = NaN;
+    Xa_tmp(MissingCT(ones(EstimOpt.NAlt,1,1,1),:,:,ones(1,1,1,size(Xa_tmp,4)))) = NaN;
     if any(MissingCT(:)) > 0 % respondents with missing NCT - replace Xa and Y with NaN
         %cprintf ('text', 'The dataset contains %d choice tasks with missing responses (out of the total of %d choice tasks).\n', sum(sum(MissingCT)),numel(MissingCT))
         cprintf ('text', ['The dataset contains ',num2str(sum(sum(MissingCT))),' choice tasks with missing responses (out of the total of ',num2str(numel(MissingCT)) ,' choice tasks).\n'])
         INPUT.Y = Y_tmp(:);
         INPUT.Xa = reshape(Xa_tmp,[size(INPUT.Xa)]);
-    end    
+    end
     if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT)) > 0
         error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
     end
-
+    
     MissingAlt = MissingInd_tmp;
     MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
     MissingAltCT = MissingAltCT(ones(EstimOpt.NAlt,1,1),:,:);
     MissingAlt = MissingAlt & MissingAltCT;
-    if sum(sum(sum(MissingAlt))) > 0 % respondents with missing ALT - replace Xa and Y with NaN        
-        Y_tmp(MissingAlt) = NaN;        
+    if sum(sum(sum(MissingAlt))) > 0 % respondents with missing ALT - replace Xa and Y with NaN
+        Y_tmp(MissingAlt) = NaN;
         Xa_tmp(MissingAlt(:,:,:,ones(1,1,1,size(Xa_tmp,4)))) = NaN;
         %cprintf ('text', 'The dataset contains %d choice tasks with missing alternatives (out of the total of %d complete choice tasks).\n', sum(sum(MissingAltCT(1,:,:))),numel(MissingCT(1,:,:))-sum(sum(MissingCT)))
         cprintf ('text', ['The dataset contains ',num2str(sum(sum(MissingAltCT(1,:,:)))) ,' choice tasks with missing alternatives (out of the total of ', num2str(numel(MissingCT(1,:,:))-sum(sum(MissingCT))) ,' complete choice tasks).\n'])
         INPUT.Y = Y_tmp(:);
         INPUT.Xa = reshape(Xa_tmp,[size(INPUT.Xa)]);
-    end    
+    end
     
     if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT))
         error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
@@ -86,7 +86,7 @@ else
     EstimOpt.MissingCT = squeeze(MissingCT);
     INPUT.TIMES = squeeze(sum(nansum(Y_tmp)));
     EstimOpt.NCTMiss = EstimOpt.NCT - sum(EstimOpt.MissingCT,1)';
-%     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(EstimOpt.MissingAlt(:,1,:),1));
+    %     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(EstimOpt.MissingAlt(:,1,:),1));
     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(sum(EstimOpt.MissingAlt,1),2)./(reshape(EstimOpt.NCTMiss,[1,1,EstimOpt.NP])));
 end
 
@@ -94,19 +94,28 @@ end
 
 EstimOpt.NObs = sum(INPUT.TIMES);
 
-if isfield(INPUT,'W') == 0 || length(INPUT.W) ~= EstimOpt.NP
-    INPUT.W = ones(EstimOpt.NP,1);
+if isfield(INPUT,'W') && ~isempty(INPUT.W)
+    if size(INPUT.W(:)) ~= size(INPUT.Y(:))
+        error('Incorrect size of the weights vector')
+    else
+        INPUT.W = INPUT.W(:);
+        INPUT.W = INPUT.W(INPUT.Y(:)==1);
+        INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
+        if sum(INPUT.W) ~= EstimOpt.NP
+            cprintf(rgb('DarkOrange'), ['WARNING: Scaling weights for unit mean. \n'])
+            INPUT.W = INPUT.W - mean(INPUT.W) + 1;
+        end
+    end
 else
-    INPUT.W = INPUT.W(:);
-    INPUT.W = EstimOpt.NP*INPUT.W/sum(INPUT.W);
+    INPUT.W = ones(EstimOpt.NP,1);
 end
 
-if isfield(EstimOpt,'RobustStd') == 0 
-   EstimOpt.RobustStd = 0; % do not use robust standard errors 
+if isfield(EstimOpt,'RobustStd') == 0
+    EstimOpt.RobustStd = 0; % do not use robust standard errors
 end
 
 EstimOpt.NVarA = size(INPUT.Xa,2); % Number of attributes
-   
+
 if isfield(EstimOpt,'HaltonSkip') == 0
     EstimOpt.HaltonSkip = 1; % specify no of rows in halton sequence to skip (default=1)
 end
@@ -133,19 +142,19 @@ if isfield(EstimOpt,'Display') == 0
 end
 
 if isfield(EstimOpt,'NumGrad') == 0 || (EstimOpt.NumGrad ~= 0 && EstimOpt.NumGrad ~= 1)
-	EstimOpt.NumGrad = 0; % 1 for numerical gradient, 0 for analytical
+    EstimOpt.NumGrad = 0; % 1 for numerical gradient, 0 for analytical
 end
 
 if isfield(EstimOpt,'HessEstFix') == 0 || (EstimOpt.HessEstFix ~= 0 && EstimOpt.HessEstFix ~= 1)
-	EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = use jacobian-based (BHHH) Hessian, 2 - use high-precision jacobian-based (BHHH) Hessian 3 - use numerical Hessian
+    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = use jacobian-based (BHHH) Hessian, 2 - use high-precision jacobian-based (BHHH) Hessian 3 - use numerical Hessian
 end
 
 if isfield(EstimOpt,'ApproxHess') == 0 || (EstimOpt.ApproxHess ~= 0 && EstimOpt.ApproxHess ~= 1)
-	EstimOpt.ApproxHess = 1;
+    EstimOpt.ApproxHess = 1;
 end
 
 if isfield(EstimOpt,'RealMin') == 0 || (EstimOpt.RealMin ~= 0 && EstimOpt.RealMin ~= 1)
-	EstimOpt.RealMin = 0;
+    EstimOpt.RealMin = 0;
 end
 
 EstimOpt.Draws = 6; % 1 - pseudo-random, 2 - Latin Hypercube, 3 - Halton, 4 - Halton RR scrambled, 5 - Sobol, 6 - Sobol MAO scrambled
@@ -154,9 +163,9 @@ EstimOpt.NSdSim = 1e4; % number of draws for simulating standard deviations
 
 %% OptimOpt
 
-if isfield(EstimOpt, 'ConstVarActive') == 0 || EstimOpt.ConstVarActive == 0 % no contstaints on parameters    
-    OptimOpt = optimoptions('fminunc');   
-	OptimOpt.Algorithm = 'quasi-newton'; %'trust-region';   
+if isfield(EstimOpt, 'ConstVarActive') == 0 || EstimOpt.ConstVarActive == 0 % no contstaints on parameters
+    OptimOpt = optimoptions('fminunc');
+    OptimOpt.Algorithm = 'quasi-newton'; %'trust-region';
 elseif EstimOpt.ConstVarActive == 1 % there are some constraints on parameters
     OptimOpt = optimoptions('fmincon');
     OptimOpt.Algorithm = 'interior-point'; %'sqp'; 'active-set'; 'trust-region-reflective';
@@ -193,12 +202,12 @@ OptimOpt.OutputFcn = @outputf;
 %% Estimate constants-only MNL model:
 
 INPUT_0.Y = INPUT.Y;
-INPUT_0.Xa = eye(EstimOpt.NAlt);...
-INPUT_0.Xa = INPUT_0.Xa(:,1:end-1);...
+INPUT_0.Xa = eye(EstimOpt.NAlt);
+INPUT_0.Xa = INPUT_0.Xa(:,1:end-1);
 INPUT_0.Xa = INPUT_0.Xa((1:size(INPUT_0.Xa,1))' * ones(1,EstimOpt.NP*EstimOpt.NCT), (1:size(INPUT_0.Xa,2))');
 INPUT_0.Xs = double.empty(size(INPUT_0.Y,1),0);
 INPUT_0.MissingInd = INPUT.MissingInd;
-INPUT_0.W = ones(EstimOpt.NP,1);
+INPUT_0.W = INPUT.W; %ones(EstimOpt.NP,1);
 EstimOpt_0 = EstimOpt;
 EstimOpt_0.ConstVarActive = 0;
 EstimOpt_0.BActive = [];
@@ -212,29 +221,20 @@ OptimOpt_0.Algorithm = 'quasi-newton';
 OptimOpt_0.GradObj = 'off';
 OptimOpt_0.Hessian = 'off';
 OptimOpt_0.Display = 'off';
-OptimOpt_0.FunValCheck= 'off'; 
-OptimOpt_0.Diagnostics = 'off'; 
+OptimOpt_0.FunValCheck= 'off';
+OptimOpt_0.Diagnostics = 'off';
 Results.MNL0 = MNL(INPUT_0,[],EstimOpt_0,OptimOpt_0);
 % Results.MNL0.LL = 1;
 
-%% old - necessary?
-
 % if exist('output','dir') == 0
-% 	mkdir('output') 
+% 	mkdir('output')
 % end
 % EstimOpt.fnameout = ('output\results');
-
 
 % if isfield(EstimOpt,'Evaluate')==0
 %     EstimOpt.Evaluate = 0;
 % end
-% 
+%
 % if isfield(EstimOpt,'SCEXP')==0
 %     EstimOpt.SCEXP = 1;
 % end
-
-% if isfield(EstimOpt,'WT')==0
-%     EstimOpt.WT = ones(size(Y));
-% end
-
-% EstimOpt.NVar = EstimOpt.NVarA + EstimOpt.NVarM + EstimOpt.NVarS + EstimOpt.NVarT;
