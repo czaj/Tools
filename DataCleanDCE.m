@@ -1,4 +1,4 @@
-function [INPUT, Results, EstimOpt, OptimOpt] = DataClean(INPUT,EstimOpt)
+function [INPUT, Results, EstimOpt, OptimOpt] = DataCleanDCE(INPUT,EstimOpt)
 
 % global TolB
 % save tmp1
@@ -94,8 +94,16 @@ end
 
 EstimOpt.NObs = sum(INPUT.TIMES);
 
-INPUT.W = INPUT.W(INPUT.Y==1);
-INPUT.W = INPUT.W - mean(INPUT.W) + 1;
+if isfield(INPUT,'W') == 0 || length(INPUT.W) ~= EstimOpt.NP
+    INPUT.W = ones(EstimOpt.NP,1);
+else
+    INPUT.W = INPUT.W(:);
+    INPUT.W = EstimOpt.NP*INPUT.W/sum(INPUT.W);
+end
+
+if isfield(EstimOpt,'RobustStd') == 0 
+   EstimOpt.RobustStd = 0; % do not use robust standard errors 
+end
 
 EstimOpt.NVarA = size(INPUT.Xa,2); % Number of attributes
    
@@ -190,6 +198,7 @@ INPUT_0.Xa = INPUT_0.Xa(:,1:end-1);...
 INPUT_0.Xa = INPUT_0.Xa((1:size(INPUT_0.Xa,1))' * ones(1,EstimOpt.NP*EstimOpt.NCT), (1:size(INPUT_0.Xa,2))');
 INPUT_0.Xs = double.empty(size(INPUT_0.Y,1),0);
 INPUT_0.MissingInd = INPUT.MissingInd;
+INPUT_0.W = ones(EstimOpt.NP,1);
 EstimOpt_0 = EstimOpt;
 EstimOpt_0.ConstVarActive = 0;
 EstimOpt_0.BActive = [];
