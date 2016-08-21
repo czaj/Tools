@@ -61,19 +61,20 @@ if type == 0 % HMNL
             U_max = max(U);
             U = exp(U - U_max(ones(EstimOpt.NAlt,1),:,:)); % rescale utility to avoid exploding
             U_sum = reshape(sum(U,1),EstimOpt.NCT,EstimOpt.NRep);
-            U_seleNCTed = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
-            probs(n,:) = prod(U_seleNCTed ./ U_sum,1);
+            U_selected = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
+            probs(n,:) = prod(U_selected ./ U_sum,1);
         end;
     else
-        parfor n = 1:EstimOpt.NP
+        save tmp1
+        for n = 1:EstimOpt.NP
 %             U = reshape(Xa(~isnan(Y(:,n)),:,n)*b_mtx(:,((n-1)*EstimOpt.NRep+1):n*EstimOpt.NRep),EstimOpt.NAlt,EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
             U = reshape(Xa(~isnan(Y(:,n)),:,n)*b_mtx(:,((n-1)*EstimOpt.NRep+1):n*EstimOpt.NRep),numel(Y(~isnan(Y(:,n))))./(EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n)))),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
             U_max = max(U);
 %             U = exp(U - U_max(ones(EstimOpt.NAlt,1),:,:)); % NAlt x NCT - NaNs x NRep
             U = exp(U - U_max(ones(numel(Y(~isnan(Y(:,n))))./(EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n)))),1),:,:)); % NAlt x NCT - NaNs x NRep
             U_sum = reshape(nansum(U,1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
-            U_seleNCTed = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
-            probs(n,:) = prod(U_seleNCTed ./ U_sum,1);
+            U_selected = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
+            probs(n,:) = prod(U_selected ./ U_sum,1);
         end;
     end
     
@@ -200,8 +201,8 @@ elseif type ==2 % HMXL
             U_max = max(U);
             U = exp(U - U_max(ones(EstimOpt.NAlt,1),:,:)); % rescale utility to avoid exploding
             U_sum = reshape(sum(U,1),EstimOpt.NCT,EstimOpt.NRep);
-            U_seleNCTed = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
-            probs(n,:) = prod(U_seleNCTed ./ U_sum,1);
+            U_selected = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
+            probs(n,:) = prod(U_selected ./ U_sum,1);
         end;
     else
         parfor n = 1:EstimOpt.NP
@@ -211,8 +212,8 @@ elseif type ==2 % HMXL
 %             U = exp(U - U_max(ones(EstimOpt.NAlt,1),:,:)); % NAlt x NCT - NaNs x NRep
             U = exp(U - U_max(ones(NAltMiss(n),1),:,:));
             U_sum = reshape(nansum(U,1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
-            U_seleNCTed = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
-            probs(n,:) = prod(U_seleNCTed ./ U_sum,1);
+            U_selected = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
+            probs(n,:) = prod(U_selected ./ U_sum,1);
         end;
     end
     
