@@ -30,7 +30,8 @@ for i = 1:EstimOpt.NSdSim
     D(i,:) = sqrt(diag(Vt_t*Vt_t'))';
 end
 
-C = [mean(D); std(D)];
+C = [mean(D);zeros(1, EstimOpt.NVarA) ;std(D)];
 C = [C; pv(mean(D),std(D))]';
+
 
 
