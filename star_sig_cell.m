@@ -5,11 +5,11 @@ for j = 1:size(P,2)
         if P(i,j) <= 0.01
             star_array(i,j) = {'***'};
         elseif P(i,j) <= 0.05
-            star_array(i,j) = {'** '};
+            star_array(i,j) = {'**'};
         elseif P(i,j) <= 0.1
-            star_array(i,j) = {'*  '};
+            star_array(i,j) = {'*'};
         else
-            star_array(i,j) = {'   '};
+            star_array(i,j) = {''};
         end
     end
 end
