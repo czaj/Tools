@@ -79,6 +79,12 @@ else
         INPUT.Xa = reshape(Xa_tmp,[size(INPUT.Xa)]);
     end
     
+    for i = 1:EstimOpt.NAlt-1
+        if squeeze(sum(sum(MissingAlt(EstimOpt.NAlt-i,:,:) == 1 & MissingAlt(EstimOpt.NAlt-i+1,:,:) == 0,2),3)) > 0
+            error('Missing alternatives must come last in the choice task')
+        end
+    end    
+    
     if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT))
         error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
     end
