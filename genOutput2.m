@@ -19,33 +19,33 @@ RowOut = [HeadsTmp; RowOut];
 %HeadsOut = [Heads.(Template1{1,1})];
 ResultsOut = [];
 for i = 1:Dim1
-
+    
     for j = 2:Dim2
         if ~isempty(Template1{i,j})
-           Block = Results.(Template1{i,j});
-           HeadsTmp = [];
-           if size(Block,2) == 4
-               ResultsTmp = num2cell(Block);
-               ResultsTmp(:,2) = star_sig_cell(Block(:,4));
-               ResultsTmp = [head2;ResultsTmp];
-               HeadsTmp = cell(1,4);
-               HeadsTmp(1,1) = Heads.(Template1{i,j});
-               ResultsTmp = [HeadsTmp; ResultsTmp];
-               %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})];
-           else % This is for Xm, and other similar
-               ResultsTmp = num2cell(Block);
-               HeadsTmp = cell(1,size(Block,2));
-               for l = 1:(size(Block,2)/4)
-                   ResultsTmp(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
-                   HeadsTmp(1,4*l-3) = Heads.(Template1{i,j})(l);
-               end
-               ResultsTmp = [repmat(head2,1,size(Block,2)/4);ResultsTmp];
-               ResultsTmp = [HeadsTmp; ResultsTmp];
-               %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})'];
+            Block = Results.(Template1{i,j});
+            HeadsTmp = [];
+            if size(Block,2) == 4
+                ResultsTmp = num2cell(Block);
+                ResultsTmp(:,2) = star_sig_cell(Block(:,4));
+                ResultsTmp = [head2;ResultsTmp];
+                HeadsTmp = cell(1,4);
+                HeadsTmp(1,1) = Heads.(Template1{i,j});
+                ResultsTmp = [HeadsTmp; ResultsTmp];
+                %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})];
+            else % This is for Xm, and other similar
+                ResultsTmp = num2cell(Block);
+                HeadsTmp = cell(1,size(Block,2));
+                for l = 1:(size(Block,2)/4)
+                    ResultsTmp(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
+                    HeadsTmp(1,4*l-3) = Heads.(Template1{i,j})(l);
+                end
+                ResultsTmp = [repmat(head2,1,size(Block,2)/4);ResultsTmp];
+                ResultsTmp = [HeadsTmp; ResultsTmp];
+                %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})'];
             end
-           RowOut = [RowOut, ResultsTmp];
-           %HeadsOut = [HeadsOut, HeadsTmp];
-       end
+            RowOut = [RowOut, ResultsTmp];
+            %HeadsOut = [HeadsOut, HeadsTmp];
+        end
     end
     
     MinVal = min(size(ResultsOut,2), size(RowOut,2));
@@ -88,19 +88,19 @@ for i = 1:Dim1
                     Coords.(Template1{i,j}) = [Coords.(Template1{i-1,j})(1)+size(Blockv,1)+2,4*j-1];
                 else
                     Coords.(Template1{i,j}) = [2+i,4*j-1];
-                end 
+                end
             end
             Block = Results.(Template1{i,j});
             %for m=1:size(Block,2)/4
-                for n = 1:size(Block,1)
-                    if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
-                        if isfield(Changed, Template1{i,j})
-                            Changed.(Template1{i,j}) = [Changed.(Template1{i,j}), n];
-                        else
-                            Changed.(Template1{i,j}) = [n];    
-                        end
+            for n = 1:size(Block,1)
+                if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
+                    if isfield(Changed, Template1{i,j})
+                        Changed.(Template1{i,j}) = [Changed.(Template1{i,j}), n];
+                    else
+                        Changed.(Template1{i,j}) = [n];
                     end
                 end
+            end
             %end
         end
     end
@@ -111,42 +111,46 @@ end
 if EstimOpt.Display~=0
     spacing = 2;
     precision = 4;
-
-      
-cprintf('*Black',strcat(Head{1,1} ,'\n'))
-for i=1:DimA
-    FirstBlock = Coords.(Template2{i,1})(1);
-    [~,CW] = CellColumnWidth(ResultsOut(FirstBlock:FirstBlock+size(Results.(Template2{i,1}),1)-1,:));    
-    indx = find(~cellfun(@isempty,Template2(i,:)));
-    indx = indx(end);
-    %UPPERHEADER
-    fprintf('%*s',CW(1)+spacing+5+3,' ')
-    for c =1:indx
-        Y = Coords.(Template2{i,c})(2);
-        for m=1:size(Results.(Template2{i,c}),2)/4
-            name = Heads.(Template2{i,c});
-            if iscell(name)
-                name = name{m};
+    
+    
+    fprintf('\n')
+    fprintf('__________________________________________________________________________________________________________________')
+    fprintf('\n')
+    fprintf('\n')
+    cprintf('*Black',strcat(Head{1,1} ,'\n'))
+    for i=1:DimA
+        FirstBlock = Coords.(Template2{i,1})(1);
+        [~,CW] = CellColumnWidth(ResultsOut(FirstBlock:FirstBlock+size(Results.(Template2{i,1}),1)-1,:));
+        indx = find(~cellfun(@isempty,Template2(i,:)));
+        indx = indx(end);
+        %UPPERHEADER
+        fprintf('%*s',CW(1)+spacing+5+3,' ')
+        for c = 1:indx
+            Y = Coords.(Template2{i,c})(2);
+            for m=1:size(Results.(Template2{i,c}),2)/4
+                name = Heads.(Template2{i,c});
+                if iscell(name)
+                    name = name{m};
+                end
+                fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
             end
-            fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
         end
-    end
-    fprintf('\n')
-    %\UPPERHEADER
-    %HEADER
-    fprintf('%-*s%-5s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
-    for c =1:indx
-        X = Coords.(Template2{i,c})(1);
-        Y = Coords.(Template2{i,c})(2);
-        for m=1:size(Results.(Template2{i,c}),2)/4
-            fprintf('%1s%*s%*s%*s%s', ' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
+        fprintf('\n')
+        %\UPPERHEADER
+        %HEADER
+        fprintf('%-*s%-5s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
+        for c = 1:indx
+            X = Coords.(Template2{i,c})(1);
+            Y = Coords.(Template2{i,c})(2);
+            for m=1:size(Results.(Template2{i,c}),2)/4
+                fprintf('%1s%*s%*s%*s%s', ' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
+            end
         end
-    end
-    fprintf('\n')
-    %\HEADER
-    %VALUES
+        fprintf('\n')
+        %\HEADER
+        %VALUES
         if isfield (Changed, Template2(i,1))
-            for k=1:size(Changed.(Template2{i,1}),2)
+            for k = 1:size(Changed.(Template2{i,1}),2)
                 d = Changed.(Template2{i,1})(k);
                 fprintf('%-*s%-4s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
                 for c =1:indx
@@ -159,7 +163,7 @@ for i=1:DimA
                 fprintf('\n')
             end
         else
-            for d=1:size(Results.(Template2{i,1}),1)
+            for d = 1:size(Results.(Template2{i,1}),1)
                 fprintf('%-*s%-4s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
                 for c =1:indx
                     for m=1:size(Results.(Template2{i,c}),2)/4
@@ -171,11 +175,11 @@ for i=1:DimA
                 fprintf('\n')
             end
         end
-        disp(' ');        
-end
+        disp(' ');
+    end
     %\VALUES
     [~,CWm] = CellColumnWidth(num2cell(Results.stats));
-    cprintf('*Black', 'Model characteristics: \n')
+    cprintf('*Black', 'Model diagnostics: \n')
     fprintf('%-29s%*.*f\n', 'LL at convergence:',CWm(1)+spacing+precision+1,precision, Results.stats(1))
     fprintf('%-29s%*.*f\n', 'LL at constant(s) only:',CWm(1)+spacing+precision+1,precision, Results.stats(2))
     fprintf('%-29s%*.*f\n', strcat('McFadden''s pseudo-R',char(178),':'),CWm(1)+spacing+precision+1,precision, Results.stats(3))
@@ -191,11 +195,11 @@ end
     end
     
     disp(' ')
-        clocknote = clock;
-        tocnote = toc;
-        [~,DayName] = weekday(now,'long');
-        disp(['Estimation completed on ' DayName ', ' num2str(clocknote(1)) '-' sprintf('%02.0f',clocknote(2)) '-' sprintf('%02.0f',clocknote(3)) ' at ' sprintf('%02.0f',clocknote(4)) ':' sprintf('%02.0f',clocknote(5)) ':' sprintf('%02.0f',clocknote(6))])
-        disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
+    clocknote = clock;
+    tocnote = toc;
+    [~,DayName] = weekday(now,'long');
+    disp(['Estimation completed on ' DayName ', ' num2str(clocknote(1)) '-' sprintf('%02.0f',clocknote(2)) '-' sprintf('%02.0f',clocknote(3)) ' at ' sprintf('%02.0f',clocknote(4)) ':' sprintf('%02.0f',clocknote(5)) ':' sprintf('%02.0f',clocknote(6))])
+    disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
     
 end
 
