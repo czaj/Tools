@@ -2,7 +2,7 @@ function distribution = distType(input, fixed, length)
     
     if nargin == 3 && fixed == 1
         for i = 1:length
-            distribution(i,1) = {'c'};
+            distribution(i,1) = {'f'};
         end
     else
         for j = 1:size(input,2)
@@ -11,7 +11,7 @@ function distribution = distType(input, fixed, length)
                     case 0
                         distribution(i,j) = {'n'};
                     case -1
-                        distribution(i,j) = {'c'};
+                        distribution(i,j) = {'f'};
                     case 1
                         distribution(i,j) = {'l'};
                     case 2

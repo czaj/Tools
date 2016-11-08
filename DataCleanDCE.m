@@ -200,7 +200,7 @@ end
 
 OptimOpt.MaxIter = 1e4;
 OptimOpt.FunValCheck = 'on';
-OptimOpt.Diagnostics = 'on';
+OptimOpt.Diagnostics = 'off';
 OptimOpt.MaxFunEvals = 1e5*size(INPUT.Xa,2); %Maximum number of function evaluations allowed (1000)
 OptimOpt.OutputFcn = @outputf;
 
