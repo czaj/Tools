@@ -109,8 +109,12 @@ end
 if EstimOpt.Display~=0
     spacing = 2;
     precision = 4;
-
-      
+    
+    
+fprintf('\n')
+fprintf('__________________________________________________________________________________________________________________')
+fprintf('\n')
+fprintf('\n')
 cprintf('*Black',strcat(Head{1,1}, '\n'));
 cprintf('*Black',strcat(Head{1,2}, '\n'));
 for i=1:DimA
@@ -174,7 +178,7 @@ for i=1:DimA
 end
     %\VALUES
     [~,CWm] = CellColumnWidth(num2cell(Results.stats));
-    cprintf('*Black', 'Model characteristics: \n')
+    cprintf('*Black', 'Model diagnostics: \n')
     fprintf('%-29s%*.*f\n', 'LL at convergence:',CWm(1)+spacing+precision+1,precision, Results.stats(1))
     fprintf('%-29s%*.*f\n', 'LL at constant(s) only:',CWm(1)+spacing+precision+1,precision, Results.stats(2))
     fprintf('%-29s%*.*f\n', strcat('McFadden''s pseudo-R',char(178),':'),CWm(1)+spacing+precision+1,precision, Results.stats(3))
