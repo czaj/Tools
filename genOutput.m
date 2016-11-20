@@ -115,7 +115,8 @@ fprintf('\n')
 fprintf('__________________________________________________________________________________________________________________')
 fprintf('\n')
 fprintf('\n')
-cprintf('*Black',strcat(Head{1,1}, '\n'));
+cprintf('*Black',Head{1,1});
+fprintf(' ');
 cprintf('*Black',strcat(Head{1,2}, '\n'));
 for i=1:DimA
     FirstBlock = Coords.(Template2{i,1})(1);
@@ -189,7 +190,7 @@ end
     fprintf('%-29s%*.*f\n','r (respondents):',CWm(1)+spacing,0, Results.stats(8))
     fprintf('%-29s%*.*f\n','k (parameters):',CWm(1)+spacing,0, Results.stats(9))
     disp(' ')
-    for i = 12:size(Tail,1)
+    for i = 13:size(Tail,1)
         fprintf('%-23s%-s\n', Tail{i,1}, Tail{i,2})
     end
     
