@@ -12,8 +12,12 @@ RowOut = num2cell(Block);
 RowOut(:,2) = star_sig_cell(Block(:,4));
 RowOut = [Names.(Template1{1,1}), distType(Results.Dist), RowOut];
 RowOut = [head1;RowOut];
-HeadsTmp = cell(1,6);
-HeadsTmp(1,3) = Heads.(Template1{1,1});
+headssize = size(Heads.(Template1{1,1}),2);
+HeadsTmp = cell(headssize,6);
+for s=1:headssize
+    HeadsTmp(s,3) = Heads.(Template1{1,1})(1,s);
+end
+%HeadsTmp(1,3) = Heads.(Template1{1,1});
 RowOut = [HeadsTmp; RowOut];
 ResultsOut = [];
 for i = 1:Dim1
@@ -26,16 +30,22 @@ for i = 1:Dim1
                ResultsTmp = num2cell(Block);
                ResultsTmp(:,2) = star_sig_cell(Block(:,4));
                ResultsTmp = [head2;ResultsTmp];
-               HeadsTmp = cell(1,4);
-               HeadsTmp(1,1) = Heads.(Template1{i,j});
+               headssize = size(Heads.(Template1{i,j}),2);%zakaz dawania roznej wielkosci headsow do rzedu blokow
+               HeadsTmp = cell(headssize,4);
+               for s=1:headssize
+                   HeadsTmp(s,1) = Heads.(Template1{i,j})(1,s);
+               end
                ResultsTmp = [HeadsTmp; ResultsTmp];
                %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})];
            else % This is for Xm, and other similar
                ResultsTmp = num2cell(Block);
-               HeadsTmp = cell(1,size(Block,2));
+               headssize = size(Heads.(Template1{i,j}),2);
+               HeadsTmp = cell(headssize,size(Block,2));
                for l = 1:(size(Block,2)/4)
                    ResultsTmp(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
-                   HeadsTmp(1,4*l-3) = Heads.(Template1{i,j})(l);
+                   for s=1:headssize
+                        HeadsTmp(s,4*l-3) = Heads.(Template1{i,j})(l,s);
+                   end
                end
                ResultsTmp = [repmat(head2,1,size(Block,2)/4);ResultsTmp];
                ResultsTmp = [HeadsTmp; ResultsTmp];
@@ -59,15 +69,29 @@ for i = 1:Dim1
     end
     if i ~= Dim1
         Block = Results.(Template1{i+1,1});
-        if strcmp(Template1{i+1,1}, 'DetailsS')
+        if strcmp(Template1{i+1,1}, 'DetailsS') || strcmp(Template1{i+1,1}, 'Xmea2') || strcmp(Template1{i+1,1}, 'Latent') || strcmp(Template1{i+1,1}, 'Xmea1')
             fixed = 1;
+        else
+            fixed = 0;
         end
         RowOut = num2cell(Block);
-        RowOut(:,2) = star_sig_cell(Block(:,4));
-        RowOut = [Names.(Template1{i+1,1}), distType(EstimOpt.Dist, fixed, size(Block,1)), RowOut]; %it will crash if size of the block and number of variables will differ
-        RowOut = [head1;RowOut];
-        HeadsTmp = cell(1,6);
-        HeadsTmp(1,3) = Heads.(char(Template1{i+1,1}));
+        for s=1:size(Block,2)/4
+            RowOut(:,4*s-2) = star_sig_cell(Block(:,s*4));
+        end
+        RowOut = [Names.(Template1{i+1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut]; %it will crash if size of the block and number of variables will differ
+        if size(Block,2)/4 >1
+            headn1 = [head1, repmat(head2, 1, size(Block,2)/4 - 1)];
+        else
+            headn1 = head1;
+        end
+        RowOut = [headn1;RowOut];
+        headssize = size(Heads.(Template1{i+1,1}),2);
+        HeadsTmp = cell(headssize,2+size(Block,2));
+        for m=1:size(Block,2)/4
+            for s=1:headssize
+                HeadsTmp(s,4*m-1) = Heads.(Template1{i+1,1})(m,s);
+            end
+        end
         RowOut = [HeadsTmp; RowOut];
     end
 end
@@ -79,30 +103,40 @@ for i = 1:Dim1
             if j>=2
                 Blockh = Results.(Template1{i,j-1});
                 Coords.(Template1{i,j}) = [Coords.(Template1{i,j-1})(1),Coords.(Template1{i,j-1})(2) + size(Blockh,2)];
-                
+                if size(Heads.(Template1{i,j}),2) > 1
+                    Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
+                end
             else
                 if i>=2
                     Blockv = Results.(Template1{i-1,j});
                     Coords.(Template1{i,j}) = [Coords.(Template1{i-1,j})(1)+size(Blockv,1)+2,4*j-1];
+                    if size(Heads.(Template1{i,j}),2) > 1
+                        Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
+                    end
                 else
                     Coords.(Template1{i,j}) = [2+i,4*j-1];
+                    if size(Heads.(Template1{i,j}),2) > 1
+                        Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
+                    end
                 end 
             end
             Block = Results.(Template1{i,j});
             %for m=1:size(Block,2)/4
-                for n = 1:size(Block,1)
-                    if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
-                        if isfield(Changed, Template1{i,j})
-                            Changed.(Template1{i,j}) = [Changed.(Template1{i,j}), n];
-                        else
-                            Changed.(Template1{i,j}) = [n];    
-                        end
-                    end
-                end
+%                 for n = 1:size(Block,1)
+%                     if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
+%                         if isfield(Changed, Template1{i,j})
+%                             Changed.(Template1{i,j}) = [Changed.(Template1{i,j}), n];
+%                         else
+%                             Changed.(Template1{i,j}) = [n];    
+%                         end
+%                     end
+%                 end
             %end
         end
     end
 end
+
+
 
 %ResultsOut(1+size(Results.(Template1{1,1}),1):end,:) =[ResultsOut(1+size(Results.(Template1{1,1}),1):end,1) cellstr(repmat(' ',size(ResultsOut,1) -size(Results.(Template1{1,1}),1) ,1)) ResultsOut(1+size(Results.(Template1{1,1}),1):end,2:end)];
 
@@ -126,13 +160,17 @@ for i=1:DimA
     %UPPERHEADER
     fprintf('%*s',CW(1)+spacing+5+3,' ')
     for c =1:indx
-        Y = Coords.(Template2{i,c})(2);
-        for m=1:size(Results.(Template2{i,c}),2)/4
-            name = Heads.(Template2{i,c});
-            if iscell(name)
-                name = name{m};
+        headssize = size(Heads.(Template2{i,c}),2);
+        for s = 1:headssize
+            Y = Coords.(Template2{i,c})(2);
+            for m=1:size(Results.(Template2{i,c}),2)/4
+                name = Heads.(Template2{i,c}){m,s};
+                if m == size(Results.(Template2{i,c}),2)/4 && s < headssize
+                    fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')
+                else
+                    fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
+                end
             end
-            fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
         end
     end
     fprintf('\n')
