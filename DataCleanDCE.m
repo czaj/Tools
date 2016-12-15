@@ -9,9 +9,9 @@ for i=1:length(inputnames)
     INPUT.(inputnames{(i)}) = double(INPUT.(inputnames{(i)}));
 end
 
-EstimOpt.Rows = size(INPUT.Xa,1)/EstimOpt.NAlt ;
+EstimOpt.Rows = size(INPUT.Xa,1)/EstimOpt.NAlt;
 if EstimOpt.Rows ~= EstimOpt.NP * EstimOpt.NCT
-    error ('Dataset needs to include the same number of choice tasks and alternatives per person. Some can later be skipped with EstimOpt.DataComplete and EstimOpt.MissingInd')
+    error ('Dataset needs to include the same number of choice tasks and alternatives per person. Some can later be skipped with EstimOpt.DataComplete and EstimOpt.MissingInd .\n')
 end
 
 if isfield(INPUT,'MissingInd') == 0 || isempty(INPUT.MissingInd)
@@ -24,8 +24,15 @@ EstimOpt.MissingCT = [];
 if sum(INPUT.MissingInd) == 0
     INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
     if sum(INPUT.TIMES) ~= sum(INPUT.Y)
-        error ('Dataset not complete (missing Y?) - provide index for rows to skip (EstimOpt.MissingInd).')
-    end
+%         error ('Dataset not complete (missing Y?) - provide index for rows to skip (EstimOpt.MissingInd).')
+        % this might not work
+        cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd .\n')
+        Y_tmp = reshape(INPUT.Y,[EstimOpt.NAlt,size(INPUT.Y,1)./EstimOpt.NAlt]);
+        INPUT.MissingInd = sum(Y_tmp,1);
+        INPUT.MissingInd = repmat(INPUT.MissingInd,[EstimOpt.NAlt,1]);
+        INPUT.MissingInd = INPUT.MissingInd(:);
+        INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
+    end    
     EstimOpt.NCTMiss = EstimOpt.NCT * ones(EstimOpt.NP,1);
     EstimOpt.NAltMiss = EstimOpt.NAlt * ones(EstimOpt.NP,1);
 else
@@ -37,8 +44,8 @@ else
         MissingPrep = reshape(MissingP(ones(EstimOpt.NAlt,1,1),ones(1,EstimOpt.NCT,1),:),EstimOpt.NAlt*EstimOpt.NCT*EstimOpt.NP,1);
         INPUT_fields = fields(INPUT);
         for i = 1:size(INPUT_fields,1)
-            tmp = INPUT.(INPUT_fields{i}); ...
-                tmp(MissingPrep,:) = []; ...
+            tmp = INPUT.(INPUT_fields{i});
+                tmp(MissingPrep,:) = [];
                 INPUT.(INPUT_fields{i}) = tmp;
         end
         %cprintf(rgb('DarkOrange'), 'WARNING: Dataset includes %d respondents with 0 completed choice tasks. Adjusting NP from %d to %d .\n', sum(MissingP), EstimOpt.NP, EstimOpt.NP-sum(MissingP))
@@ -89,7 +96,8 @@ else
         error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
     end
     EstimOpt.MissingAlt = MissingAlt;
-    EstimOpt.MissingCT = squeeze(MissingCT);
+%     EstimOpt.MissingCT = squeeze(MissingCT);
+    EstimOpt.MissingCT = reshape(MissingCT,[EstimOpt.NCT,EstimOpt.NP]);
     INPUT.TIMES = squeeze(sum(nansum(Y_tmp)));
     EstimOpt.NCTMiss = EstimOpt.NCT - sum(EstimOpt.MissingCT,1)';
     %     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(EstimOpt.MissingAlt(:,1,:),1));
