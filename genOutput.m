@@ -69,7 +69,7 @@ for i = 1:Dim1
     end
     if i ~= Dim1
         Block = Results.(Template1{i+1,1});
-        if strcmp(Template1{i+1,1}, 'DetailsS') || strcmp(Template1{i+1,1}, 'Xmea2') || strcmp(Template1{i+1,1}, 'Latent') || strcmp(Template1{i+1,1}, 'Xmea1')
+        if strcmp(Template1{i+1,1}, 'DetailsS') || strcmp(Template1{i+1,1}, 'Xmea2') || strcmp(Template1{i+1,1}, 'Latent') || strcmp(Template1{i+1,1}, 'Xmea1') || strcmp(Template1{i+1,1}, 'DetailsScale')
             fixed = 1;
         else
             fixed = 0;
