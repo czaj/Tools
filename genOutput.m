@@ -154,8 +154,8 @@ fprintf('\n')
 fprintf('__________________________________________________________________________________________________________________')
 fprintf('\n')
 fprintf('\n')
-cprintf('*Black',Head{1,1});
-fprintf(' ');
+cprintf('*Black',[Head{1,1},' ']);
+% fprintf(' ');
 cprintf('*Black',strcat(Head{1,2}, '\n'));
 for i=1:DimA
     FirstBlock = Coords.(Template2{i,1})(1);
