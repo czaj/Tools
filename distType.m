@@ -2,7 +2,7 @@ function distribution = distType(input, fixed, length)
     
     if nargin == 3 && fixed == 1
         for i = 1:length
-            distribution(i,1) = {'f'};
+            distribution(i,1) = {' '};
         end
     else
         for j = 1:size(input,2)
