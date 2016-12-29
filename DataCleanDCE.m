@@ -101,6 +101,9 @@ else
     INPUT.TIMES = squeeze(sum(nansum(Y_tmp)));
     EstimOpt.NCTMiss = EstimOpt.NCT - sum(EstimOpt.MissingCT,1)';
     %     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(EstimOpt.MissingAlt(:,1,:),1));
+    EstimOpt.NAltMissIndExp = sum(MissingAlt == 0,1);
+    EstimOpt.NAltMissInd = reshape(EstimOpt.NAltMissIndExp, EstimOpt.NCT, EstimOpt.NP);
+    EstimOpt.NAltMissIndExp = reshape(EstimOpt.NAltMissIndExp(ones(EstimOpt.NAlt,1),:,:), EstimOpt.NAlt*EstimOpt.NCT, EstimOpt.NP);
     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(sum(EstimOpt.MissingAlt,1),2)./(reshape(EstimOpt.NCTMiss,[1,1,EstimOpt.NP])));
 end
 
