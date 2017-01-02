@@ -15,6 +15,7 @@ if ismember(Template1{1,1},ST)
 else
     fixed = 0;
 end
+
 RowOut = [Names.(Template1{1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut];
 RowOut = [head1;RowOut];
 headssize = size(Heads.(Template1{1,1}),2);

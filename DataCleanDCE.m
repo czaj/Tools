@@ -11,7 +11,7 @@ end
 
 EstimOpt.Rows = size(INPUT.Xa,1)/EstimOpt.NAlt;
 if EstimOpt.Rows ~= EstimOpt.NP * EstimOpt.NCT
-    error ('Dataset needs to include the same number of choice tasks and alternatives per person. Some can later be skipped with EstimOpt.DataComplete and EstimOpt.MissingInd .\n')
+    error ('Dataset needs to include the same number of choice tasks and alternatives per person. Some can later be skipped with EstimOpt.DataComplete and EstimOpt.MissingInd')
 end
 
 if isfield(INPUT,'MissingInd') == 0 || isempty(INPUT.MissingInd)
