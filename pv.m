@@ -1,6 +1,26 @@
-function result = pv(m,s)
+function result = pv(m,varargin)
 
-s(logical(imag(s)) | s<0) = NaN;
+if nargin < 1 % check no. of inputs
+    error('Too few input arguments')
+end
+
+if nargin == 1
+    if size(m,2) > 2
+        cprintf(rgb('DarkOrange'),'WARNING: using the first 2 columns only \n');
+        s = m(:,2);
+        m = m(:,1);
+    elseif size(m,2) == 2
+        s = m(:,2);
+        m = m(:,1);
+    else 
+        error('Too few input arguments - one argument input must have 2+ columns')
+    end
+else
+    m = m(:,1); %data musi be in columns
+    s = varargin{1};
+end
+
+s(logical(imag(s)) | s < 0) = NaN;
 
 result = (1-normcdf(abs(m)./s,0,1))*2;
 
