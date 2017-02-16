@@ -2,6 +2,7 @@ function ResultsOut = genOutput(EstimOpt, Results, Head, Tail, Names, Template1,
 
 head1 = {'var.', 'dist.', 'coef.','sign.' ,'st.err.' , 'p-value'};
 head2 = {'coef.','sign.' ,'st.err.' , 'p-value'};
+head3 = {'var.', '', 'coef.','sign.' ,'st.err.' , 'p-value'};
 
 Dim1 = size(Template1,1);
 Dim2 = size(Template1,2);
@@ -15,9 +16,14 @@ if ismember(Template1{1,1},ST)
 else
     fixed = 0;
 end
-
 RowOut = [Names.(Template1{1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut];
-RowOut = [head1;RowOut];
+
+if fixed == 0
+    RowOut = [head1;RowOut];
+else
+    RowOut = [head3;RowOut];
+end
+
 headssize = size(Heads.(Template1{1,1}),2);
 HeadsTmp = cell(headssize,6);
 for s=1:headssize
@@ -85,11 +91,20 @@ for i = 1:Dim1
             RowOut(:,4*s-2) = star_sig_cell(Block(:,s*4));
         end
         RowOut = [Names.(Template1{i+1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut]; %it will crash if size of the block and number of variables will differ
-        if size(Block,2)/4 >1
-            headn1 = [head1, repmat(head2, 1, size(Block,2)/4 - 1)];
+        if fixed == 0
+            if size(Block,2)/4 >1
+                headn1 = [head1, repmat(head2, 1, size(Block,2)/4 - 1)];
+            else
+                headn1 = head1;
+            end
         else
-            headn1 = head1;
+            if size(Block,2)/4 >1
+                headn1 = [head3, repmat(head2, 1, size(Block,2)/4 - 1)];
+            else
+                headn1 = head3;
+            end
         end
+        
         RowOut = [headn1;RowOut];
         headssize = size(Heads.(Template1{i+1,1}),2);
         HeadsTmp = cell(headssize,2+size(Block,2));
@@ -186,7 +201,11 @@ for i=1:DimA
     for c =1:indx
         X = Coords.(Template2{i,c})(1);
         Y = Coords.(Template2{i,c})(2);
+        
         for m=1:size(Results.(Template2{i,c}),2)/4
+            % if ResultsOut{X-1,Y+(m-1)*4} == 'dist'
+            %    ResultsOut{X-1,Y+(m-1)*4} = '';
+            %end
             fprintf('%1s%*s%*s%*s%s', ' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
         end
     end
