@@ -72,11 +72,11 @@ for i = 1:Dim1
     MaxVal = max(size(ResultsOut,2), size(RowOut,2));
     if MinVal == size(ResultsOut,2)
         ResTemp = cell(size(ResultsOut,1), MaxVal);
-        ResTemp(:, 1:MinVal) = ResultsOut;
+        ResTemp(:,1:MinVal) = ResultsOut;
         ResultsOut = [ResTemp; RowOut];
     else
         ResTemp = cell(size(RowOut,1), MaxVal);
-        ResTemp(:, 1:MinVal) = RowOut;
+        ResTemp(:,1:MinVal) = RowOut;
         ResultsOut = [ResultsOut; ResTemp];
     end
     if i ~= Dim1
@@ -141,7 +141,7 @@ for i = 1:Dim1
                     end
                 end 
             end
-            Block = Results.(Template1{i,j});
+%             Block = Results.(Template1{i,j});
             %for m=1:size(Block,2)/4
 %                 for n = 1:size(Block,1)
 %                     if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
