@@ -43,7 +43,8 @@ MissingP = sum(MissingCT,2) == EstimOpt.NCT; % respondents with all NCT missing
 
 if sum(MissingP) > 0 % respondents with 0 NCTs - remove from INPUT
     MissingPrep = reshape(MissingP(ones(EstimOpt.NAlt,1,1),ones(1,EstimOpt.NCT,1),:),EstimOpt.NAlt*EstimOpt.NCT*EstimOpt.NP,1);
-    INPUT_fields = fields(INPUT);
+    %     INPUT_fields = fields(INPUT);
+    INPUT_fields = fieldnames(INPUT);
     for i = 1:size(INPUT_fields,1)
         tmp = INPUT.(INPUT_fields{i});
         tmp(MissingPrep,:) = [];
@@ -78,6 +79,7 @@ MissingAlt = MissingInd_tmp;
 MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
 MissingAltCT = MissingAltCT(ones(EstimOpt.NAlt,1,1),:,:);
 MissingAlt = MissingAlt & MissingAltCT;
+
 if sum(sum(sum(MissingAlt))) > 0 % respondents with missing ALT - replace Xa and Y with NaN
     Y_tmp(MissingAlt) = NaN;
     Xa_tmp(MissingAlt(:,:,:,ones(1,1,1,size(Xa_tmp,4)))) = NaN;
@@ -87,15 +89,51 @@ if sum(sum(sum(MissingAlt))) > 0 % respondents with missing ALT - replace Xa and
     INPUT.Xa = reshape(Xa_tmp,[size(INPUT.Xa)]);
 end
 
+alt_sort = false;
 for i = 1:EstimOpt.NAlt-1
-    if squeeze(sum(sum(MissingAlt(EstimOpt.NAlt-i,:,:) == 1 & MissingAlt(EstimOpt.NAlt-i+1,:,:) == 0,2),3)) > 0
-        error('Missing alternatives must come last in the choice task')
+    if squeeze(sum(sum(MissingAlt(EstimOpt.NAlt-i,:,:) == 1 & MissingAlt(EstimOpt.NAlt-i+1,:,:) == 0,2),3)) > 0        
+        %         error('Missing alternatives must come last in the choice task')
+        alt_sort = true;
     end
 end
+
+save tmp1
+
+if alt_sort
+    cprintf(rgb('DarkOrange'), ['WARNING: Missing alternatives must come last in the choice task - sorting each choice task \n'])
+    % sort alternatives:
+    idx_missing_alt = INPUT.MissingInd;
+    fields = fieldnames(INPUT);
+    for i = 1:numel(fields)
+        tmp = [INPUT.(fields{i}),idx_missing_alt];
+        size_tmp = size(tmp);
+        tmp = reshape(tmp,[EstimOpt.NAlt,EstimOpt.NCT*EstimOpt.NP,size_tmp(2)]);
+        tmp = permute(tmp,[1,3,2]);
+        for j = 1:size(tmp,3)
+            tmp(:,:,j) =  sortrows(tmp(:,:,j),size_tmp(2));
+        end
+        tmp = permute(tmp,[1,3,2]);
+        INPUT.(fields{i}) = reshape(tmp(:,:,1:end-1),[size_tmp(1),size_tmp(2)-1]);
+    end
+    
+    % recreate indexes:
+    MissingAlt = reshape(INPUT.MissingInd,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
+    MissingCT = sum(MissingInd_tmp,1) == EstimOpt.NAlt;
+    MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
+    MissingAltCT = MissingAltCT(ones(EstimOpt.NAlt,1,1),:,:);
+    MissingAlt = MissingAlt & MissingAltCT;
+    Y_tmp = reshape(INPUT.Y,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
+    Y_tmp(MissingCT(ones(EstimOpt.NAlt,1,1),:,:)) = NaN;
+end
+
+save tmp2
+
+
 
 if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT))
     error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
 end
+
 EstimOpt.MissingAlt = MissingAlt;
 %     EstimOpt.MissingCT = squeeze(MissingCT);
 EstimOpt.MissingCT = reshape(MissingCT,[EstimOpt.NCT,EstimOpt.NP]);
