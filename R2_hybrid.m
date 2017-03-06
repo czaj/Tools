@@ -40,9 +40,9 @@ if type == 0 % HMNL
     if EstimOpt.WTP_space > 0
         b_mtx(1:end-EstimOpt.WTP_space,:) = b_mtx(1:end-EstimOpt.WTP_space,:).*b_mtx(EstimOpt.WTP_matrix,:);
     end
-    if any(EstimOpt.MNLDist ~= 0)
-        b_mtx(EstimOpt.MNLDist == 1,:) = exp(b_mtx(EstimOpt.MNLDist == 1,:)); 
-        b_mtx(EstimOpt.MNLDist == 2,:) = max(b_mtx(EstimOpt.MNLDist == 2,:),0);
+    if any(EstimOpt.Dist ~= 0)
+        b_mtx(EstimOpt.Dist == 1,:) = exp(b_mtx(EstimOpt.Dist == 1,:)); 
+        b_mtx(EstimOpt.Dist == 2,:) = max(b_mtx(EstimOpt.Dist == 2,:),0);
     end
     if EstimOpt.ScaleLV == 1
         ScaleLVX =exp(bsLV*LV);
@@ -63,9 +63,9 @@ if type == 0 % HMNL
             U_sum = reshape(sum(U,1),EstimOpt.NCT,EstimOpt.NRep);
             U_selected = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
             probs(n,:) = prod(U_selected ./ U_sum,1);
-        end;
+        end
     else
-        save tmp1
+%         save tmp1
         for n = 1:EstimOpt.NP
 %             U = reshape(Xa(~isnan(Y(:,n)),:,n)*b_mtx(:,((n-1)*EstimOpt.NRep+1):n*EstimOpt.NRep),EstimOpt.NAlt,EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
             U = reshape(Xa(~isnan(Y(:,n)),:,n)*b_mtx(:,((n-1)*EstimOpt.NRep+1):n*EstimOpt.NRep),numel(Y(~isnan(Y(:,n))))./(EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n)))),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
@@ -75,7 +75,7 @@ if type == 0 % HMNL
             U_sum = reshape(nansum(U,1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
             U_selected = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
             probs(n,:) = prod(U_selected ./ U_sum,1);
-        end;
+        end
     end
     
     if any(MissingInd == 1) % In case of some missing data
@@ -174,9 +174,9 @@ elseif type ==2 % HMXL
     end
 
     b_mtx = ba + bl*LV + VC*err_sliced(1:EstimOpt.NVarA,:); % NVarA x NRep*NP
-    if sum(EstimOpt.Dist==1) > 0; % Log - normal
+    if sum(EstimOpt.Dist==1) > 0 % Log - normal
         b_mtx(EstimOpt.Dist==1,:) = exp(b_mtx(EstimOpt.Dist == 1,:));
-    elseif sum(EstimOpt.Dist==2) > 0; % Spike       
+    elseif sum(EstimOpt.Dist==2) > 0 % Spike       
         b_mtx(EstimOpt.Dist==2,:) = max(b_mtx(EstimOpt.Dist==2,:),0);
     end
 
@@ -203,7 +203,7 @@ elseif type ==2 % HMXL
             U_sum = reshape(sum(U,1),EstimOpt.NCT,EstimOpt.NRep);
             U_selected = reshape(U(Y(:,n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT,EstimOpt.NRep);   
             probs(n,:) = prod(U_selected ./ U_sum,1);
-        end;
+        end
     else
         parfor n = 1:EstimOpt.NP
 %             U = reshape(Xa(~isnan(Y(:,n)),:,n)*b_mtx(:,((n-1)*EstimOpt.NRep+1):n*EstimOpt.NRep),EstimOpt.NAlt,EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
@@ -214,7 +214,7 @@ elseif type ==2 % HMXL
             U_sum = reshape(nansum(U,1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);
             U_selected = reshape(U(Y(~isnan(Y(:,n)),n*ones(EstimOpt.NRep,1))==1),EstimOpt.NCT-sum(isnan(Y(1:EstimOpt.NAlt:end,n))),EstimOpt.NRep);   
             probs(n,:) = prod(U_selected ./ U_sum,1);
-        end;
+        end
     end
     
     if any(MissingInd == 1) % In case of some missing data
