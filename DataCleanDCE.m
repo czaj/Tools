@@ -1,7 +1,7 @@
 function [INPUT, Results, EstimOpt, OptimOpt] = DataCleanDCE(INPUT,EstimOpt)
 
 % global TolB
-% save tmp1
+% save tmp_DataCleanDCE
 % return
 
 inputnames = fieldnames(INPUT);
@@ -24,7 +24,6 @@ EstimOpt.MissingCT = [];
 if sum(INPUT.MissingInd) == 0
     INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
     if sum(INPUT.TIMES) ~= nansum(INPUT.Y)
-        save tmp1
         cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd .\n')
         Y_tmp = reshape(INPUT.Y,[EstimOpt.NAlt,size(INPUT.Y,1)./EstimOpt.NAlt]);
         INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
@@ -97,8 +96,6 @@ for i = 1:EstimOpt.NAlt-1
     end
 end
 
-save tmp1
-
 if alt_sort
     cprintf(rgb('DarkOrange'), ['WARNING: Missing alternatives must come last in the choice task - sorting each choice task \n'])
     % sort alternatives:
@@ -125,10 +122,6 @@ if alt_sort
     Y_tmp = reshape(INPUT.Y,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
     Y_tmp(MissingCT(ones(EstimOpt.NAlt,1,1),:,:)) = NaN;
 end
-
-save tmp2
-
-
 
 if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT))
     error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
