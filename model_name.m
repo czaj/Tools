@@ -6,14 +6,14 @@ function model = model_name(x)
         case 1
             model = 'MNL';   
         case 2 
-            model = 'OP';        
+            model = 'Ordered Probit';        
         case 3 
-            model = 'POISS';            
+            model = 'Poisson regression';            
         case 4 
-            model = 'NB';                
+            model = 'Negative Binomial regression';                
         case 5
-            model = 'ZIP';
+            model = 'Zero Inflated Poisson regression';
         case 6
-            model = 'ZINB';
+            model = 'Zero Inflated Negative Binomial regression';
     end
 end
