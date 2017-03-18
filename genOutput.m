@@ -62,8 +62,23 @@ for i = 1:Dim1
                ResultsTmp = [repmat(head2,1,size(Block,2)/4);ResultsTmp];
                ResultsTmp = [HeadsTmp; ResultsTmp];
                %HeadsTmp = [HeadsTmp, Heads.(Template1{i,j})'];
-            end
-           RowOut = [RowOut, ResultsTmp];
+           end
+           if size(RowOut,1) < size(ResultsTmp,1)
+               RowOuttmp = cell(size(ResultsTmp,1),size(RowOut,2));
+               RowOuttmp(size(ResultsTmp,1) - size(RowOut,1)+1:end,:) = RowOut;
+               RowOut = [RowOuttmp, ResultsTmp];
+               %Heads_tmp = cell(size(Heads.(Template1{i,1}),1),max(size(Heads.(Template1{i,1}),2),size(Heads.(Template1{i,j}),2)));
+               %Heads_tmp(:,1:size(Heads.(Template1{i,1}),2)) = Heads.(Template1{i,1});
+               %Heads.(Template1{i,1}) = Heads_tmp;
+               Coords.(Template1{i,1})(1) = 1; Coords.(Template1{i,1})(2) = 0;
+           elseif size(RowOut,1) > size(ResultsTmp,1)
+               Results_tmp = cell(size(RowOut,1),size(ResultsTmp,2));
+               Results_tmp(size(RowOut,1)-size(ResultsTmp,1)+1:end,:) = ResultsTmp;
+               RowOut = [RowOut, Results_tmp];
+           else
+               RowOut = [RowOut, ResultsTmp];
+           end
+               
            %HeadsOut = [HeadsOut, HeadsTmp];
        end
     end
@@ -124,9 +139,9 @@ for i = 1:Dim1
             if j>=2
                 Blockh = Results.(Template1{i,j-1});
                 Coords.(Template1{i,j}) = [Coords.(Template1{i,j-1})(1),Coords.(Template1{i,j-1})(2) + size(Blockh,2)];
-                if size(Heads.(Template1{i,j}),2) > 1
-                    Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
-                end
+                %if size(Heads.(Template1{i,j}),2) > 1
+                %    Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
+                %end
             else
                 if i>=2
                     Blockv = Results.(Template1{i-1,j});
@@ -135,7 +150,12 @@ for i = 1:Dim1
                         Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
                     end
                 else
-                    Coords.(Template1{i,j}) = [2+i,4*j-1];
+                    if isfield(Coords, Template1{i,j}) && ~isempty(Coords.(Template1{i,j}))
+                        Coords.(Template1{i,j}) = [Coords.(Template1{i,j})(1)+2+i,Coords.(Template1{i,j})(2)+4*j-1];
+                    else
+                        Coords.(Template1{i,j}) = [2+i,4*j-1];
+                    end
+                    
                     if size(Heads.(Template1{i,j}),2) > 1
                         Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
                     end
@@ -179,18 +199,33 @@ for i=1:DimA
     indx = find(~cellfun(@isempty,Template2(i,:)));
     indx = indx(end);
     %UPPERHEADER
-    fprintf('%*s',CW(1)+spacing+5+3,' ')
+    %fprintf('%*s',CW(1)+spacing+5+3,' ')
     for c =1:indx
         headssize = size(Heads.(Template2{i,c}),2);
         for s = 1:headssize
             Y = Coords.(Template2{i,c})(2);
-            for m=1:size(Results.(Template2{i,c}),2)/4
-                name = Heads.(Template2{i,c}){m,s};
-                if m == size(Results.(Template2{i,c}),2)/4 && s < headssize
-                    fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')
-                else
-                    fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
+            indxh = find(~cellfun(@isempty,Heads.(Template2{i,c})(:,s)));
+            if ~isempty(indxh)
+                indxh = indxh(end);
+            else
+                indxh = 1;
+            end
+            %for m=1:size(Results.(Template2{i,c}),2)/4
+            for m=1:indxh
+                if c==1 && headssize==1 && s==1 && m==1
+                    fprintf('%*s',CW(1)+spacing+5+3,' ')
                 end
+                name = Heads.(Template2{i,c}){m,s};
+%                     if m == indxh && s == 1 && headssize > 1
+%                         fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')
+%                     else
+                        
+                    if m == indxh && s < headssize
+                        fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')  
+                    else
+                        fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
+                    end
+
             end
         end
     end
