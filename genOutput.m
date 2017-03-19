@@ -3,7 +3,7 @@ function ResultsOut = genOutput(EstimOpt, Results, Head, Tail, Names, Template1,
 head1 = {'var.', 'dist.', 'coef.','sign.' ,'st.err.' , 'p-value'};
 head2 = {'coef.','sign.' ,'st.err.' , 'p-value'};
 head3 = {'var.', '', 'coef.','sign.' ,'st.err.' , 'p-value'};
-
+Coords = struct;
 Dim1 = size(Template1,1);
 Dim2 = size(Template1,2);
 DimA = size(Template2,1);
@@ -133,15 +133,13 @@ for i = 1:Dim1
 end
 
 Changed = struct;
+
 for i = 1:Dim1
     for j = 1:Dim2
         if ~isempty(Template1{i,j})
             if j>=2
                 Blockh = Results.(Template1{i,j-1});
                 Coords.(Template1{i,j}) = [Coords.(Template1{i,j-1})(1),Coords.(Template1{i,j-1})(2) + size(Blockh,2)];
-                %if size(Heads.(Template1{i,j}),2) > 1
-                %    Coords.(Template1{i,j})(1) = Coords.(Template1{i,j})(1) + size(Heads.(Template1{i,j}),2) - 1;
-                %end
             else
                 if i>=2
                     Blockv = Results.(Template1{i-1,j});
@@ -161,18 +159,6 @@ for i = 1:Dim1
                     end
                 end 
             end
-%             Block = Results.(Template1{i,j});
-            %for m=1:size(Block,2)/4
-%                 for n = 1:size(Block,1)
-%                     if or(isnan(Block(n,1:4)) == [0 1 0 0],  isnan(Block(n,1:4)) == [0 0 0 0])
-%                         if isfield(Changed, Template1{i,j})
-%                             Changed.(Template1{i,j}) = [Changed.(Template1{i,j}), n];
-%                         else
-%                             Changed.(Template1{i,j}) = [n];    
-%                         end
-%                     end
-%                 end
-            %end
         end
     end
 end
