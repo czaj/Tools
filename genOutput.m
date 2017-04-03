@@ -55,8 +55,12 @@ for i = 1:Dim1
                HeadsTmp = cell(headssize,size(Block,2));
                for l = 1:(size(Block,2)/4)
                    ResultsTmp(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
-                   for s=1:headssize
-                        HeadsTmp(s,4*l-3) = Heads.(Template1{i,j})(l,s);
+               end
+               for s=1:headssize
+                   indxh = find(~cellfun(@isempty,Heads.(Template1{i,j})(:,s)));
+                   indxh = indxh(end);
+                   for l = 1:indxh-1
+                       HeadsTmp(s,4*l-3) = Heads.(Template1{i,j})(l,s);
                    end
                end
                ResultsTmp = [repmat(head2,1,size(Block,2)/4);ResultsTmp];
@@ -123,8 +127,10 @@ for i = 1:Dim1
         RowOut = [headn1;RowOut];
         headssize = size(Heads.(Template1{i+1,1}),2);
         HeadsTmp = cell(headssize,2+size(Block,2));
-        for m=1:size(Block,2)/4
-            for s=1:headssize
+        for s=1:headssize
+            indxh = find(~cellfun(@isempty,Heads.(Template1{i+1,1})(:,s)));
+            indxh = indxh(end);
+            for m=1:indxh-1
                 HeadsTmp(s,4*m-1) = Heads.(Template1{i+1,1})(m,s);
             end
         end
@@ -185,7 +191,6 @@ for i=1:DimA
     indx = find(~cellfun(@isempty,Template2(i,:)));
     indx = indx(end);
     %UPPERHEADER
-    %fprintf('%*s',CW(1)+spacing+5+3,' ')
     for c =1:indx
         headssize = size(Heads.(Template2{i,c}),2);
         for s = 1:headssize
@@ -197,37 +202,49 @@ for i=1:DimA
                 indxh = 1;
             end
             %for m=1:size(Results.(Template2{i,c}),2)/4
-            for m=1:indxh
-                if c==1 && headssize==1 && s==1 && m==1
-                    fprintf('%*s',CW(1)+spacing+5+3,' ')
+            method = Heads.(Template2{i,c}){indxh,s};
+          
+            if strcmp(method,'lc')
+                name = Heads.(Template2{i,c}){1,s};
+                if length(name) > (CW(1)+spacing+CW(2)+4+CW(Y))
+                    CW(2) = length(name)-(CW(1)+spacing+CW(2)+4+CW(Y))+spacing;
                 end
-                name = Heads.(Template2{i,c}){m,s};
-%                     if m == indxh && s == 1 && headssize > 1
-%                         fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')
-%                     else
-                        
-                    if m == indxh && s < headssize
-                        fprintf('%-*s\n%*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name,CW(1)+spacing+5+3,' ')  
-                    else
-                        fprintf('%-*s',sum(CW(Y+(m-1)*4:Y+(m-1)*4+3)) - CW(Y+(m-1)*4+1) + (spacing+precision)*3 + 10, name)
-                    end
+                fprintf('%-*s',CW(1)+spacing*2+CW(2)+4+CW(Y),name)
+                for m = 2:indxh-1
+                    name = Heads.(Template2{i,c}){m,s};
+                    fprintf('%-*s',sum(CW(Y+(m-1)*4+2:Y+(m-1)*4+3)) + precision*3 + 16 + CW(Y+m*4), name)
+               end
 
+
+            elseif strcmp(method,'tb') || strcmp(method,'lb') || strcmp(method,'tc')
+                if method(1) == 't'
+                    fprintf('%*s',CW(1)+spacing*2+CW(2)+4+CW(Y),' ')
+                end
+                for m = 1:indxh-1
+                    name = Heads.(Template2{i,c}){m,s};
+                    if m~=(indxh-1)
+                        fprintf('%-*s',sum(CW(Y+(m-1)*4+2:Y+(m-1)*4+3)) + precision*3 + 16 + CW(Y+m*4), name)
+                    else
+                        fprintf('%-*s',sum(CW(Y+(m-1)*4+2:Y+(m-1)*4+3)) + precision*3 + 16+1, name)
+                    end
+                end
+            end
+            if method(2) == 'b'
+                fprintf('\n')
             end
         end
     end
-    fprintf('\n')
+
+    
+    %fprintf('\n')
     %\UPPERHEADER
     %HEADER
-    fprintf('%-*s%-5s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
+    fprintf('%-*s%-*s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1},CW(2)+ 4, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
     for c =1:indx
         X = Coords.(Template2{i,c})(1);
         Y = Coords.(Template2{i,c})(2);
-        
         for m=1:size(Results.(Template2{i,c}),2)/4
-            % if ResultsOut{X-1,Y+(m-1)*4} == 'dist'
-            %    ResultsOut{X-1,Y+(m-1)*4} = '';
-            %end
-            fprintf('%1s%*s%*s%*s%s', ' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
+            fprintf('%1s%*s%*s%*s%s',' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
         end
     end
     fprintf('\n')
@@ -236,7 +253,7 @@ for i=1:DimA
         if isfield (Changed, Template2(i,1))
             for k=1:size(Changed.(Template2{i,1}),2)
                 d = Changed.(Template2{i,1})(k);
-                fprintf('%-*s%-4s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
+                fprintf('%-*s%-*s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1},CW(2)+3, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
                 for c =1:indx
                     for m=1:size(Results.(Template2{i,c}),2)/4
                         X = Coords.(Template2{i,c})(1);
@@ -248,7 +265,7 @@ for i=1:DimA
             end
         else
             for d=1:size(Results.(Template2{i,1}),1)
-                fprintf('%-*s%-4s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1}, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
+                fprintf('%-*s%-*s', CW(1)+spacing+1,ResultsOut{Coords.(Template2{i,1})(1) + d - 1,1}, CW(2)+3, ResultsOut{Coords.(Template2{i,1})(1) + d - 1,2})
                 for c =1:indx
                     for m=1:size(Results.(Template2{i,c}),2)/4
                         X = Coords.(Template2{i,c})(1);
