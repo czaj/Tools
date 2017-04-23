@@ -10,7 +10,9 @@ DimA = size(Template2,1);
 
 Block = Results.(Template1{1,1});
 RowOut = num2cell(Block);
-RowOut(:,2) = star_sig_cell(Block(:,4));
+for l = 1:(size(Block,2)/4)
+    RowOut(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
+end
 if ismember(Template1{1,1},ST)
     fixed = 1;
 else
@@ -19,15 +21,19 @@ end
 RowOut = [Names.(Template1{1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut];
 
 if fixed == 0
-    RowOut = [head1;RowOut];
+    RowOut = [[head1(1:2) ,repmat(head2,1,size(Block,2)/4)];RowOut];
 else
-    RowOut = [head3;RowOut];
+    RowOut = [[head3(1:2) ,repmat(head2,1,size(Block,2)/4)];RowOut];
 end
 
 headssize = size(Heads.(Template1{1,1}),2);
-HeadsTmp = cell(headssize,6);
+HeadsTmp = cell(headssize,4*size(Heads.(Template1{1,1}),1)-2);
 for s=1:headssize
-    HeadsTmp(s,3) = Heads.(Template1{1,1})(1,s);
+    indxh = find(~cellfun(@isempty,Heads.(Template1{1,1})(:,s)));
+    indxh = indxh(end);
+    for m=1:indxh-1
+        HeadsTmp(s,4*m-1) = Heads.(Template1{1,1})(m,s);
+    end
 end
 %HeadsTmp(1,3) = Heads.(Template1{1,1});
 RowOut = [HeadsTmp; RowOut];
@@ -109,6 +115,9 @@ for i = 1:Dim1
         for s=1:size(Block,2)/4
             RowOut(:,4*s-2) = star_sig_cell(Block(:,s*4));
         end
+%         if strcmp(Template1{i+1,1},'DetailsPClass')
+%             RowOut(:,3:4) = cellstr(repmat("",size(Block,1),2));
+%         end
         RowOut = [Names.(Template1{i+1,1}), distType(Results.Dist, fixed, size(Block,1)), RowOut]; %it will crash if size of the block and number of variables will differ
         if fixed == 0
             if size(Block,2)/4 >1
@@ -125,6 +134,7 @@ for i = 1:Dim1
         end
         
         RowOut = [headn1;RowOut];
+
         headssize = size(Heads.(Template1{i+1,1}),2);
         HeadsTmp = cell(headssize,2+size(Block,2));
         for s=1:headssize
@@ -135,6 +145,9 @@ for i = 1:Dim1
             end
         end
         RowOut = [HeadsTmp; RowOut];
+        if strcmp(Template1{i+1,1},'DetailsPClass')
+            RowOut = RowOut(:,1:3);
+        end
     end
 end
 
