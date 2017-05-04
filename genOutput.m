@@ -145,9 +145,10 @@ for i = 1:Dim1
             end
         end
         RowOut = [HeadsTmp; RowOut];
-        if strcmp(Template1{i+1,1},'DetailsPClass')
-            RowOut = RowOut(:,1:3);
-        end
+         if strcmp(Template1{i+1,1},'DetailsPClass')
+             RowOut(2,:) = cellstr(repmat("",1,size(Block,2)+2));
+             EmptyRow = i+1;
+         end
     end
 end
 
@@ -252,15 +253,15 @@ for i=1:DimA
     %fprintf('\n')
     %\UPPERHEADER
     %HEADER
-    fprintf('%-*s%-*s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1},CW(2)+ 4, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
-    for c =1:indx
-        X = Coords.(Template2{i,c})(1);
-        Y = Coords.(Template2{i,c})(2);
-        for m=1:size(Results.(Template2{i,c}),2)/4
-            fprintf('%1s%*s%*s%*s%s',' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
+        fprintf('%-*s%-*s',CW(1)+spacing,ResultsOut{Coords.(Template2{i,1})(1) - 1,1},CW(2)+ 4, ResultsOut{Coords.(Template2{i,1})(1) - 1,2})
+        for c =1:indx
+            X = Coords.(Template2{i,c})(1);
+            Y = Coords.(Template2{i,c})(2);
+            for m=1:size(Results.(Template2{i,c}),2)/4
+                fprintf('%1s%*s%*s%*s%s',' ',CW(Y+(m-1)*4)+spacing+precision,ResultsOut{X-1,Y+(m-1)*4}, CW(Y+(m-1)*4+2)+spacing+precision+4,ResultsOut{X-1,Y+(m-1)*4+2}, CW(Y+(m-1)*4+3)+spacing+precision+2,ResultsOut{X-1,Y+(m-1)*4+3},'   ')
+            end
         end
-    end
-    fprintf('\n')
+        fprintf('\n')
     %\HEADER
     %VALUES
         if isfield (Changed, Template2(i,1))
