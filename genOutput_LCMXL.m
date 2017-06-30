@@ -184,6 +184,9 @@ for i = 1:Dim1
                 if ~strcmp(Template1{i,j-1},'NULL')
                     Blockh = Results.(Template1{i,j-1});
                     Coords.(Template1{i,j}) = [Coords.(Template1{i,j-1})(1),Coords.(Template1{i,j-1})(2) + size(Blockh,2)+1];
+                else
+                    Blockh = Results.(Template1{i,j-2});
+                    Coords.(Template1{i,j}) = [Coords.(Template1{i,j-2})(1),Coords.(Template1{i,j-2})(2) + size(Blockh,2)+1+4];
                 end
             else
                 if i>=2
