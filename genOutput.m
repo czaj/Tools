@@ -230,12 +230,14 @@ for i=1:DimA
             name = ' '; 
         end
         if length(name) > (CW(1)+spacing+CW(2)+4+CW(Y))
-            CW(1) = length(name)-(CW(1)+spacing+CW(2)+4+CW(Y))+spacing;
+            CW(2) = length(name)-(CW(1)+spacing+CW(2)+4+CW(Y))+spacing;
         end
     end
 end
 
 for i=1:DimA
+%     FirstBlock = Coords.(Template2{i,1})(1);
+%     [~,CW] = CellColumnWidth(ResultsOut(FirstBlock:FirstBlock+size(Results.(Template2{i,1}),1)-1,:));
     indx = find(~cellfun(@isempty,Template2(i,:)));
     indx = indx(end);
     %UPPERHEADER
