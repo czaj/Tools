@@ -24,7 +24,7 @@ EstimOpt.MissingCT = [];
 if sum(INPUT.MissingInd) == 0
     INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
     if sum(INPUT.TIMES) ~= nansum(INPUT.Y)
-        cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd .\n')
+        cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd.\n')
         Y_tmp = reshape(INPUT.Y,[EstimOpt.NAlt,size(INPUT.Y,1)./EstimOpt.NAlt]);
         INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
         INPUT.MissingInd = repmat(INPUT.MissingInd,[EstimOpt.NAlt,1]);
@@ -46,7 +46,13 @@ if sum(MissingP) > 0 % respondents with 0 NCTs - remove from INPUT
     INPUT_fields = fieldnames(INPUT);
     for i = 1:size(INPUT_fields,1)
         tmp = INPUT.(INPUT_fields{i});
-        tmp(MissingPrep,:) = [];
+        if isempty(tmp)
+            continue
+        elseif isequal(INPUT_fields{i},'TIMES') % || isequal(INPUT_fields{i},'W')
+            tmp(reshape(MissingP,[size(MissingP,3),1]),:) = [];
+        else
+            tmp(MissingPrep,:) = [];
+        end
         INPUT.(INPUT_fields{i}) = tmp;
     end
     %cprintf(rgb('DarkOrange'), 'WARNING: Dataset includes %d respondents with 0 completed choice tasks. Adjusting NP from %d to %d .\n', sum(MissingP), EstimOpt.NP, EstimOpt.NP-sum(MissingP))
@@ -144,12 +150,13 @@ EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(sum(EstimOpt.MissingAlt,1),2)./(
 EstimOpt.NObs = sum(INPUT.TIMES);
 
 if isfield(INPUT,'W') && ~isempty(INPUT.W)
-    if size(INPUT.W(:)) ~= size(INPUT.Y(:))
+    if any(size(INPUT.W(:)) ~= size(INPUT.Y(:)))
         error('Incorrect size of the weights vector')
     else
         INPUT.W = INPUT.W(:);
-        INPUT.W = INPUT.W(INPUT.Y(:)==1);
-        INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
+%         INPUT.W = INPUT.W(INPUT.Y(:)==1);
+%         INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
+        INPUT.W = INPUT.W(1:EstimOpt.NCT.*EstimOpt.NAlt:end);
         if sum(INPUT.W) ~= EstimOpt.NP
             cprintf(rgb('DarkOrange'), ['WARNING: Scaling weights for unit mean. \n'])
             INPUT.W = INPUT.W - mean(INPUT.W) + 1;
