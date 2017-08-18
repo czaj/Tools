@@ -1,7 +1,7 @@
 function ResultsOut = genOutput(EstimOpt, Results, Head, Tail, Names, Template1, Template2, Heads, ST)
 
 if ~isfield(EstimOpt,'xlsOverwrite')
-    EstimOpt.xlsOverwrite = 0;
+    EstimOpt.xlsOverwrite = 1;
 end
 
 head1 = {'var.', 'dist.', 'coef.','sign.' ,'st.err.' , 'p-value'};
