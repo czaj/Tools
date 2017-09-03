@@ -443,8 +443,8 @@ excelWorkbook.ConflictResolution = 2;
 SaveAs(excelWorkbook,fullSaveName);
 excel.DisplayAlerts = 0;
 excelWorkbook.Saved = 1;
-% Close(excelWorkbook)
-% Quit(excel)
+Close(excelWorkbook)
+Quit(excel)
 delete(excel)
 delete(fullTMPTemplate)
 
