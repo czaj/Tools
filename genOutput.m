@@ -418,26 +418,20 @@ elseif isfield(EstimOpt,'xlsOverwrite') && EstimOpt.xlsOverwrite == 1
     if exist('ex','var')
         wbs = ex.Workbooks;
         for j = 1:wbs.Count
-            if strcat(wbs.Item(j).FullName,fullSaveName)
-                i = 1;
-                while exist(fullSaveName,'file') == 2
-                    if ~contains(fullSaveName, '(')
-                        pos = strfind(fullSaveName, '.xls');
-                        fullSaveName = strcat(fullSaveName(1:pos-1),'(',num2str(i),').xls');
-                    else
-                        pos = strfind(fullSaveName, '(');
-                        fullSaveName = strcat(fullSaveName(1:pos),num2str(i),').xls');
-                    end
-                    i = i+1;
+            if strcmp(wbs.Item(j).FullName,fullSaveName)
+                if ~contains(fullSaveName, '(')
+                    pos = strfind(fullSaveName, '.xls');
+                    fullSaveName = strcat(fullSaveName(1:pos-1),'(',num2str(1),').xls');
+                else
+                    pos = strfind(fullSaveName, '(');
+                    pos2 = strfind(fullSaveName, ')');
+                    num = str2double(fullSaveName(pos+1:pos2-1)) + 1;
+                    fullSaveName = strcat(fullSaveName(1:pos),num2str(num),').xls');
                 end
             end
         end
     end
 end
-
-
-
-
 
 excelWorkbook.ConflictResolution = 2;
 SaveAs(excelWorkbook,fullSaveName);
