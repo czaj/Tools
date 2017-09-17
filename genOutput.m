@@ -186,7 +186,7 @@ end
 
 %ResultsOut(1+size(Results.(Template1{1,1}),1):end,:) =[ResultsOut(1+size(Results.(Template1{1,1}),1):end,1) cellstr(repmat(' ',size(ResultsOut,1) -size(Results.(Template1{1,1}),1) ,1)) ResultsOut(1+size(Results.(Template1{1,1}),1):end,2:end)];
 
-if EstimOpt.Display~=0
+if EstimOpt.Display ~= 0
     spacing = 2;
     precision = 4;
     
@@ -196,7 +196,6 @@ fprintf('_______________________________________________________________________
 fprintf('\n')
 fprintf('\n')
 cprintf('*Black',[Head{1,1},' ']);
-% fprintf(' ');
 cprintf('*Black',strcat(Head{1,2}, '\n'));
 
 for i=1:DimA
@@ -234,7 +233,7 @@ for i=1:DimA
             name = ' '; 
         end
         if length(name) > (CW(1)+spacing+CW(2)+4+CW(Y))
-            CW(2) = length(name)-(CW(1)+spacing+CW(2)+4+CW(Y))+spacing;
+            CW(2) = length(name)-(CW(1)+spacing+4+CW(Y))+spacing;
         end
     end
 end
