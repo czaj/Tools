@@ -26,7 +26,7 @@ if nargin == 4 && strcmp(type,'lml')
                 distribution(i,1) = {'Pw CHISp'};
         end
     end
-elseif nargin == 3 && fixed == 1
+elseif nargin >= 3 && fixed == 1
     distribution = cell(input_length,1);
 else
     distribution = cell(length(input),1);
