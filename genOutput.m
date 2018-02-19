@@ -27,11 +27,9 @@ else
     fixed = 0;
 end
 if strcmp(Type,'lml')
-    dist = distType(Results.Dist, fixed, size(Block,1), Type);
-    num = repmat(1:(size(Block,1)/EstimOpt.NVarA),[EstimOpt.NVarA,1]);
-    num = num(:);
-    dist2 = [repmat('(',length(num),1),num2str(num),repmat(') ',length(num),1),char(dist)];
-    RowOut = [Names.(Template1{1,1}), cellstr(dist2), RowOut];
+    distCol = distType(Results.Dist,fixed,size(Block,1),Type);
+    distCol = [char(distCol),repmat(' (',[size(Block,1),1]),repmat(num2str(EstimOpt.NOrder),[size(Block,1),1]),repmat(')',[size(Block,1),1])];
+    RowOut = [Names.(Template1{1,1}), cellstr(distCol), RowOut];
 else
     RowOut = [Names.(Template1{1,1}), distType(Results.Dist, fixed, size(Block,1), Type), RowOut];
 end
@@ -244,7 +242,7 @@ for i=1:DimA
             name = ' '; 
         end
         if length(name) > (CW(1)+spacing+CW(2)+4+CW(Y))
-            CW(2) = length(name)-(CW(1)+spacing+4+CW(Y))+spacing;
+            CW(2) = length(name)-(CW(1)+spacing+CW(2)+4+CW(Y))+spacing;
         end
     end
 end
@@ -267,19 +265,16 @@ for i=1:DimA
             end
             %for m=1:size(Results.(Template2{i,c}),2)/4
             method = Heads.(Template2{i,c}){indxh,s};
-          
             if strcmp(method,'lc')
                 name = Heads.(Template2{i,c}){1,s};
                 fprintf('%-*s',CW(1)+spacing*2+CW(2)+4+CW(Y),name)
                 for m = 2:indxh-1
                     name = Heads.(Template2{i,c}){m,s};
-                    fprintf('%-*s',sum(CW(Y+(m-1)*4+2:Y+(m-1)*4+3)) + precision*3 + 16 + CW(Y+m*4), name)
+                    fprintf('%-*s',sum(CW(Y+(m-1)*4+2:Y+(m-1)*4+3)) + precision*3 + 18 + CW(Y+m*4), name)
                end
-
-
             elseif strcmp(method,'tb') || strcmp(method,'lb') || strcmp(method,'tc')
                 if method(1) == 't'
-                    fprintf('%*s',CW(1)+spacing*2+CW(2)+4+CW(Y),' ')
+                    fprintf('%*s',CW(1)+spacing*2+CW(2)+4,' ')
                 end
                 for m = 1:indxh-1
                     name = Heads.(Template2{i,c}){m,s};
@@ -338,7 +333,7 @@ for i=1:DimA
             end
         end
         disp(' ');        
-    end
+end
     %\VALUES
     [~,CWm] = CellColumnWidth(num2cell(Results.stats));
     cprintf('*Black', 'Model diagnostics: \n')
@@ -374,15 +369,11 @@ ResultsOut = [ResultsOut; TailOut];
 % Adding statistics if available
 if nargin == 11 
     Stats = [{''};{'var.'};EstimOpt.NamesA];
-    
-    
-    
+
     if isfield(Statistics, 'Bounds')
         StatsTmp = {'Lower Bound','Upper Bound';'value','value'};
         StatsTmp = [StatsTmp;num2cell(Statistics.Bounds)];
         Stats = [Stats,StatsTmp];
-        
-        
     end
 
     if isfield(Statistics, 'Mean')
@@ -409,6 +400,7 @@ if nargin == 11
         Stats = [Stats,StatsTmp];
     end
 
+    statTypes = EstimOpt.StatTypes;
     if EstimOpt.Display ~= 0   
     %%printing
     [~,CWs] = CellColumnWidth(Stats(3:end,:));
@@ -416,48 +408,65 @@ if nargin == 11
     valuesStats = Stats(2,:);
     fprintf('%*s',CWs(1)+spacing,' ')
     
-    for i = 2:length(headStats)
+    i = 2;
+    while i <= length(headStats)
         name = headStats{i};
-        if length(name) > CWs(i) + spacing+precision*2+1
+        statType = statTypes(i-1);
+        if statType == 'b'
             CWs(i) = length(name);
-        end
-        
-        if isempty(name)
-            if strcmp(Stats{2,i},'')
-                fprintf('%-3s%*s',name, spacing,'')
-            else
-                fprintf('%-*s%*s',CWs(i)+spacing + precision, name, spacing,'')
-            end
-        else
-            fprintf('%-*s%*s',CWs(i)+spacing + precision, name, spacing,'')
+            fprintf('%*s%*s',CWs(i), name, spacing,'')
+            i = i + 1;
+        elseif statType == 'm'
+            fprintf('%*s%*s%*s%s',CWs(i)+spacing+precision+1,name,CWs(i+2)+spacing+precision+4,headStats{i+2}, CWs(i+3)+spacing+precision+1,headStats{i+3},' ')
+            i = i + 4;
+        elseif statType == 'q'
+            fprintf('%*s%*s',CWs(i)+spacing+precision+1, name, spacing,'')
+            i = i + 1;
         end
     end
+    
+    
     fprintf('\n')
     fprintf('%-*s',CWs(1)+spacing,Stats{2,1})
-    for i = 2:length(valuesStats)
+    
+    i = 2;
+    while i <= length(valuesStats)
         name = valuesStats{i};
-        if strcmp(Stats{2,i},'')
-            fprintf('%3s%*s',name, spacing,'')
-        else
-            fprintf('%*s%*s',CWs(i)+spacing + precision, name, spacing,'')
+        statType = statTypes(i-1);
+        if statType == 'b'
+            fprintf('%*s%*s',CWs(i), name, spacing,'')
+            i = i + 1;
+        elseif statType == 'm'
+            fprintf('%*s%*s%*s%s',CWs(i)+spacing+precision+1,name,CWs(i+2)+spacing+precision+4,valuesStats{i+2}, CWs(i+3)+spacing+precision+1,valuesStats{i+3},' ')
+            i = i + 4;
+        elseif statType == 'q'
+            fprintf('%*s%*s',CWs(i)+spacing+precision+1, name, spacing,'')
+            i = i + 1;
         end
     end
     fprintf('\n')
     for j=1:size(Stats,1)-2
         StatsRow = Stats(j+2,:);
         fprintf('%-*s',CWs(1)+spacing,Stats{j+2,1})
-        for i=2:length(StatsRow)
+        i = 2;
+        while i <= length(valuesStats)
             value = StatsRow{i};
-                if i < length(StatsRow) && ((ischar(StatsRow{i+1}) && contains(StatsRow{i+1},'*')) || strcmp(StatsRow{i+1},''))
-                    fprintf('% *.*f%-3s%*s',CWs(i)+spacing + precision+1, precision, value, StatsRow{i+1}, spacing,'')
-                elseif (ischar(value) && contains(value,'*')) || strcmp(value,'')
-                    continue
-                else
-                    fprintf('% *.*f%*s',CWs(i)+spacing + precision+1, precision, value, spacing,'')
-                end
+            statType = statTypes(i-1);
+            if statType == 'b'
+                fprintf('%*.*f%*s',CWs(i),precision+1, value, spacing,'')
+                i = i + 1;
+            elseif statType == 'm'
+                fprintf('% *.*f%-3s% *.*f% *.*f%s', CWs(i)+spacing+precision+1,precision,value,StatsRow{i+1},CWs(i+2)+spacing+precision+1,precision,StatsRow{i+2},CWs(i+3)+spacing+precision+1,precision,StatsRow{i+3},' ')
+                i = i + 4;
+            elseif statType == 'q'
+                fprintf('%*.*f%*s',CWs(i)+spacing+precision+1,precision, value, spacing,'')
+                i = i + 1;
+            end
         end
         fprintf('\n')
     end
+        
+  
     end
         
     Stats = [cell(2,size(Stats,2));Stats];
