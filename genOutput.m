@@ -1,4 +1,4 @@
-function ResultsOut = genOutput(EstimOpt, Results, Head, Tail, Names, Template1, Template2, Heads, ST, Type, Statistics)
+function ResultsOut = genOutput(EstimOpt,Results,Head,Tail,Names,Template1,Template2,Heads,ST,Type,Statistics)
 
 if nargin < 10
     Type = 0;

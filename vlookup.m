@@ -5,8 +5,8 @@ function data_target = vlookup(id_target, id_source, data_source)
 
 [~,idx] = ismember(id_target,id_source);
 
-data_target = NaN(size(idx));
-data_target(idx~=0) = data_source(idx(idx~=0),:);
+data_target = NaN(size(idx,1),size(data_source,2));
+data_target(idx~=0,:) = data_source(idx(idx~=0),:);
 
 
 
