@@ -144,7 +144,7 @@ for i = 1:Dim1
         end
         
         RowOut = [headn1;RowOut];
-
+        
         headssize = size(Heads.(Template1{i+1,1}),2);
         HeadsTmp = cell(headssize,2+size(Block,2));
         for s=1:headssize
@@ -494,7 +494,7 @@ if EstimOpt.Display ~= 0
         disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
 end 
 % excel
-
+try
 fullOrgTemplate = which('template.xls');
 currFld = pwd;
 
@@ -569,3 +569,5 @@ Quit(excel)
 delete(excel)
 delete(fullTMPTemplate)
 
+catch
+end
