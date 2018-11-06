@@ -142,7 +142,7 @@ for i = 1:Dim1
                 headn1 = head3;
             end
         end
-        
+                
         RowOut = [headn1;RowOut];
         
         headssize = size(Heads.(Template1{i+1,1}),2);
@@ -154,7 +154,7 @@ for i = 1:Dim1
                 HeadsTmp(s,4*m-1) = Heads.(Template1{i+1,1})(m,s);
             end
         end
-        RowOut = [HeadsTmp; RowOut];
+        RowOut = [HeadsTmp;RowOut];
 
     end
 end

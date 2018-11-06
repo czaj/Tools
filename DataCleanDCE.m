@@ -140,7 +140,7 @@ INPUT.TIMES = squeeze(sum(nansum(Y_tmp)));
 EstimOpt.NCTMiss = EstimOpt.NCT - sum(EstimOpt.MissingCT,1)';
 %     EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(EstimOpt.MissingAlt(:,1,:),1));
 EstimOpt.NAltMissIndExp = sum(MissingAlt == 0,1);
-EstimOpt.NAltMissInd = reshape(EstimOpt.NAltMissIndExp, EstimOpt.NCT, EstimOpt.NP);
+EstimOpt.NAltMissInd = reshape(EstimOpt.NAltMissIndExp,[EstimOpt.NCT,EstimOpt.NP]);
 EstimOpt.NAltMissIndExp = reshape(EstimOpt.NAltMissIndExp(ones(EstimOpt.NAlt,1),:,:), EstimOpt.NAlt*EstimOpt.NCT, EstimOpt.NP);
 EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(sum(EstimOpt.MissingAlt,1),2)./(reshape(EstimOpt.NCTMiss,[1,1,EstimOpt.NP])));
 % end
@@ -157,7 +157,7 @@ if isfield(INPUT,'W') && ~isempty(INPUT.W)
 %         INPUT.W = INPUT.W(INPUT.Y(:)==1);
 %         INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
         INPUT.W = INPUT.W(1:EstimOpt.NCT.*EstimOpt.NAlt:end);
-        if sum(INPUT.W) ~= EstimOpt.NP
+        if (sum(INPUT.W) ~= EstimOpt.NP) && (isfield('EstimOpt','NoScalingW') && EstimOpt.NoScalingW == 1)
             cprintf(rgb('DarkOrange'), ['WARNING: Scaling weights for unit mean. \n'])
             INPUT.W = INPUT.W.*size(INPUT.W,1)./sum(INPUT.W);
         end
