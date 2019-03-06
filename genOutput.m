@@ -18,6 +18,7 @@ DimA = size(Template2,1);
 
 Block = Results.(Template1{1,1});
 RowOut = num2cell(Block);
+
 for l = 1:(size(Block,2)/4)
     RowOut(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
 end
