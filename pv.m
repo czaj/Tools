@@ -1,23 +1,24 @@
-function result = pv(m,varargin)
+function result = pv(input1,varargin)
+
+% save tmp1
 
 if nargin < 1 % check no. of inputs
     error('Too few input arguments')
-end
-
-if nargin == 1
-    if size(m,2) > 2
-        cprintf(rgb('DarkOrange'),'WARNING: using the first 2 columns only \n');
-        s = m(:,2);
-        m = m(:,1);
-    elseif size(m,2) == 2
-        s = m(:,2);
-        m = m(:,1);
-    else 
-        error('Too few input arguments - one argument input must have 2+ columns')
-    end
-else
-    m = m(:,1); %data musi be in columns
+elseif nargin > 1
+    %     m = m(:,1); %data must be in columns
+    m = input1;
     s = varargin{1};
+elseif nargin == 1
+    if size(input1,2) > 2
+        cprintf(rgb('DarkOrange'),'WARNING: using the first 2 columns of input only, assuming they are means and standard errors, respectively  \n');
+        s = input1(:,2);
+        m = input1(:,1);
+    elseif size(m,2) == 2
+        s = input1(:,2);
+        m = input1(:,1);
+    else
+        error('Input must include means and standard errors (as two separate inputs, or one 2-column matrix)')
+    end
 end
 
 s(logical(imag(s)) | s < 0) = NaN;
