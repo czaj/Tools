@@ -157,7 +157,7 @@ if isfield(INPUT,'W') && ~isempty(INPUT.W)
 %         INPUT.W = INPUT.W(INPUT.Y(:)==1);
 %         INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
         INPUT.W = INPUT.W(1:EstimOpt.NCT.*EstimOpt.NAlt:end);
-        if (sum(INPUT.W) ~= EstimOpt.NP) && (isfield('EstimOpt','NoScalingW') && EstimOpt.NoScalingW == 1)
+        if (sum(INPUT.W) ~= EstimOpt.NP) && (~isfield('EstimOpt','NoScalingW') || EstimOpt.NoScalingW == 0)
             cprintf(rgb('DarkOrange'), ['WARNING: Scaling weights for unit mean. \n'])
             INPUT.W = INPUT.W.*size(INPUT.W,1)./sum(INPUT.W);
         end
