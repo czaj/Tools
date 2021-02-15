@@ -26,7 +26,8 @@ if sum(INPUT.MissingInd) == 0
     if sum(INPUT.TIMES) ~= nansum(INPUT.Y)
         cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd.\n')
         Y_tmp = reshape(INPUT.Y,[EstimOpt.NAlt,size(INPUT.Y,1)./EstimOpt.NAlt]);
-        INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
+%         INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
+        INPUT.MissingInd = nansum(Y_tmp,1) ~= 1;
         INPUT.MissingInd = repmat(INPUT.MissingInd,[EstimOpt.NAlt,1]);
         INPUT.MissingInd = INPUT.MissingInd(:);
         Y_tmp = reshape(INPUT.Y,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
@@ -81,6 +82,7 @@ if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT)) > 0
 end
 
 MissingAlt = MissingInd_tmp;
+MissingAlt(isnan(Y_tmp)) = 1; % missing alternatives need to have NaN as a response variable
 MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
 MissingAltCT = MissingAltCT(ones(EstimOpt.NAlt,1,1),:,:);
 MissingAlt = MissingAlt & MissingAltCT;
