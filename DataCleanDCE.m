@@ -108,17 +108,21 @@ if alt_sort
     cprintf(rgb('DarkOrange'), ['WARNING: Missing alternatives must come last in the choice task - sorting each choice task \n'])
     % sort alternatives:
     idx_missing_alt = INPUT.MissingInd;
-    fields = fieldnames(INPUT);
-    for i = 1:numel(fields)
-        tmp = [INPUT.(fields{i}),idx_missing_alt];
-        size_tmp = size(tmp);
-        tmp = reshape(tmp,[EstimOpt.NAlt,EstimOpt.NCT*EstimOpt.NP,size_tmp(2)]);
-        tmp = permute(tmp,[1,3,2]);
-        for j = 1:size(tmp,3)
-            tmp(:,:,j) =  sortrows(tmp(:,:,j),size_tmp(2));
+    fields = fieldnames(INPUT);    
+    for i = 1:numel(fields) 
+        if isequal(fields{i},'TIMES') % we do not sort  TIMES     
+            continue
+        else
+            tmp = [INPUT.(fields{i}),idx_missing_alt];
+            size_tmp = size(tmp);
+            tmp = reshape(tmp,[EstimOpt.NAlt,EstimOpt.NCT*EstimOpt.NP,size_tmp(2)]);
+            tmp = permute(tmp,[1,3,2]);
+            for j = 1:size(tmp,3)
+                tmp(:,:,j) =  sortrows(tmp(:,:,j),size_tmp(2));
+            end
+            tmp = permute(tmp,[1,3,2]);
+            INPUT.(fields{i}) = reshape(tmp(:,:,1:end-1),[size_tmp(1),size_tmp(2)-1]);
         end
-        tmp = permute(tmp,[1,3,2]);
-        INPUT.(fields{i}) = reshape(tmp(:,:,1:end-1),[size_tmp(1),size_tmp(2)-1]);
     end
     
     % recreate indexes:
