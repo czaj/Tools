@@ -21,13 +21,18 @@ end
 EstimOpt.MissingAlt = [];
 EstimOpt.MissingCT = [];
 
+% Sometimes there are no properly filled MissingInd vector
+% Must be checked
 if sum(INPUT.MissingInd) == 0
+    % Check if there are NaNs instead of ones in the answers data
+    % If yes, then the corresponding CT must be ommited
     INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
-    if sum(INPUT.TIMES) ~= nansum(INPUT.Y) || any(isnan(INPUT.Y))
+    if sum(INPUT.TIMES) ~= nansum(INPUT.Y)
         cprintf(rgb('DarkOrange'),'WARNING: Dataset not complete (missing Y?) - imputing non-empty EstimOpt.MissingInd.\n')
         Y_tmp = reshape(INPUT.Y,[EstimOpt.NAlt,size(INPUT.Y,1)./EstimOpt.NAlt]);
-        INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
-%         INPUT.MissingInd = nansum(Y_tmp,1) ~= 1;
+%         INPUT.MissingInd = sum(Y_tmp,1) ~= 1;
+        INPUT.MissingInd = nansum(Y_tmp,1) ~= 1;
+        % Ommit whole CT
         INPUT.MissingInd = repmat(INPUT.MissingInd,[EstimOpt.NAlt,1]);
         INPUT.MissingInd = INPUT.MissingInd(:);
         Y_tmp = reshape(INPUT.Y,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
@@ -80,7 +85,8 @@ end
 if sum(sum((nansum(Y_tmp,1) ~= 1) ~= MissingCT)) > 0
     error ('Index for rows to skip (EstimOpt.MissingInd) not consistent with available observations (Y) - there are choice tasks with erroneously coded response variable.')
 end
-
+% Check if there are missing alternatives (NaNs in the CT which don't
+% replace ones)
 MissingAlt = MissingInd_tmp;
 MissingAlt(isnan(Y_tmp)) = 1; % missing alternatives need to have NaN as a response variable
 MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
@@ -107,7 +113,8 @@ end
 if alt_sort
     cprintf(rgb('DarkOrange'), ['WARNING: Missing alternatives must come last in the choice task - sorting each choice task \n'])
     % sort alternatives:
-    idx_missing_alt = INPUT.MissingInd;
+%     idx_missing_alt = INPUT.MissingInd;
+    idx_missing_alt = reshape(MissingAlt, size(INPUT.MissingInd));
     fields = fieldnames(INPUT);    
     for i = 1:numel(fields) 
         if isequal(fields{i},'TIMES') % we do not sort  TIMES     
@@ -126,7 +133,8 @@ if alt_sort
     end
     
     % recreate indexes:
-    MissingAlt = reshape(INPUT.MissingInd,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
+%     MissingAlt = reshape(INPUT.MissingInd,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
+    MissingAlt = reshape(MissingAlt,EstimOpt.NAlt,EstimOpt.NCT,EstimOpt.NP);
     MissingCT = sum(MissingInd_tmp,1) == EstimOpt.NAlt;
     MissingAltCT = (sum(MissingAlt,1) > 0) & (sum(MissingAlt,1) < EstimOpt.NAlt);
     MissingAltCT = MissingAltCT(ones(EstimOpt.NAlt,1,1),:,:);
