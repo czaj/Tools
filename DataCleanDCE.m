@@ -24,6 +24,7 @@ EstimOpt.MissingCT = [];
 % Sometimes there are no properly filled MissingInd vector
 % Must be checked
 if sum(INPUT.MissingInd) == 0
+% if (sum(INPUT.TIMES) ~= nansum(INPUT.Y)) || any(isnan(INPUT.Y))
     % Check if there are NaNs instead of ones in the answers data
     % If yes, then the corresponding CT must be ommited
     INPUT.TIMES = EstimOpt.NCT * ones(EstimOpt.NP,1);
