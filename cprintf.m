@@ -1,4 +1,4 @@
-function count = cprintf(style,format,varargin)
+function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
 % CPRINTF displays styled formatted text in the Command Window
 %
 % Syntax:
@@ -37,8 +37,14 @@ function count = cprintf(style,format,varargin)
 %          only one of them can be used in a single cprintf command. But of
 %          course bold and underline can be mixed by using separate commands.
 %
-%    STYLE also accepts a regular Matlab RGB vector, that can be underlined
-%    and bolded: -[0,1,1] means underlined cyan, '*[1,0,0]' is bold red.
+%    STYLE colors can be specified in 3 variants:
+%        [0.1, 0.7, 0.3] - standard Matlab RGB color format in the range 0.0-1.0
+%        [26, 178, 76]   - numeric RGB values in the range 0-255
+%        '#1ab34d'       - Hexadecimal format in the range '00'-'FF' (case insensitive)
+%                          3-digit HTML RGB format also accepted: 'a5f'='aa55ff'
+%
+%    STYLE can be underlined by prefixing - :  -[0,1,1]  or '-#0FF' is underlined cyan
+%    STYLE can be made bold  by prefixing * : '*[1,0,0]' or '*#F00' is bold red
 %
 %    STYLE is case-insensitive and accepts unique partial strings just
 %    like handle property names.
@@ -95,6 +101,8 @@ function count = cprintf(style,format,varargin)
 %    6. Bold style is only supported on R2011b+, and cannot also be underlined.
 %
 % Change log:
+%    2021-04-07: Enabled specifying color as #RGB (hexa codes), [.1,.7,.3], [26,178,76]
+%    2020-01-20: Fix by T. Hosman for embedded hyperlinks
 %    2015-06-24: Fixed a few discoloration issues (some other issues still remain)
 %    2015-03-20: Fix: if command window isn't defined yet (startup) use standard fprintf as suggested by John Marozas
 %    2012-08-09: Graceful degradation support for deployed (compiled) and non-desktop applications; minor bug fixes
@@ -104,7 +112,7 @@ function count = cprintf(style,format,varargin)
 %    2011-03-04: Performance improvement
 %    2010-06-27: Fix for R2010a/b; fixed edge case reported by Sharron; CPRINTF with no args runs the demo
 %    2009-09-28: Fixed edge-case problem reported by Swagat K
-%    2009-05-28: corrected nargout behavior suggested by Andreas G�b
+%    2009-05-28: corrected nargout behavior suggested by Andreas Gäb
 %    2009-05-13: First version posted on <a href="http://www.mathworks.com/matlabcentral/fileexchange/authors/27420">MathWorks File Exchange</a>
 %
 % See also:
@@ -114,7 +122,7 @@ function count = cprintf(style,format,varargin)
 % referenced and attributed as such. The original author maintains the right to be solely associated with this work.
 
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
-% $Revision: 1.10 $  $Date: 2015/06/24 01:29:18 $
+% $Revision: 1.12 $  $Date: 2021/04/07 01:02:53 $
 
   persistent majorVersion minorVersion
   if isempty(majorVersion)
@@ -157,7 +165,14 @@ function count = cprintf(style,format,varargin)
 
       % Set hyperlinking, if so requested
       if underlineFlag
-          format = ['<a href="">' format '</a>'];
+          prefix = '<a href="">';
+          %format = [prefix format '</a>'];  % this displayed incorrectly for embedded hyperlinks
+
+          % Handle case of embedded hyperlinks with underline format 5/1/2020
+          str = sprintf(format, varargin{:});
+          str = regexprep(str,{'<a ','/a>','_@@@_'},{'_@@@_<a ',['/a>' prefix],'</a>'},'ignorecase');
+          str = [prefix str '</a>'];
+          format = '%s'; varargin = {str};
 
           % Matlab 7.1 R14 (possibly a few newer versions as well?)
           % have a bug in rendering consecutive hyperlinks
@@ -219,13 +234,16 @@ function count = cprintf(style,format,varargin)
       % Display the text in the Command Window
       % Note: fprintf(2,...) is required in order to add formatting tokens, which
       % ^^^^  can then be updated below (no such tokens when outputting to stdout)
+      %format(end+1) = ' ';  % Jacob D's FEX comment 14/6/2016 (sometimes makes things worse!) https://mail.google.com/mail/u/0/#inbox/15551268609f9fef
       count1 = fprintf(2,format,varargin{:});
 
       % Repaint the command window
       %awtinvoke(cmdWinDoc,'remove',lastPos,1);   % TODO: find out how to remove the extra '_'
       drawnow;  % this is necessary for the following to work properly (refer to Evgeny Pr in FEX comment 16/1/2011)
       xCmdWndView.repaint;
+      %pause(0.01);
       %hListeners = cmdWinDoc.getDocumentListeners; for idx=1:numel(hListeners), try hListeners(idx).repaint; catch, end, end
+      cmdWinLen = cmdWinDoc.getLength;
 
       docElement = cmdWinDoc.getParagraphElement(lastPos+1);
       if majorVersion<7 || (majorVersion==7 && minorVersion<13)
@@ -244,7 +262,7 @@ function count = cprintf(style,format,varargin)
       end
 
       % Get the Document Element(s) corresponding to the latest fprintf operation
-      while docElement.getStartOffset < cmdWinDoc.getLength
+      while docElement.getStartOffset < cmdWinLen
           % Set the element style according to the current style
           if debugFlag, dumpElement(docElement); end
           specialFlag = underlineFlag | boldFlag;
@@ -259,6 +277,7 @@ function count = cprintf(style,format,varargin)
       % Force a Command-Window repaint
       % Note: this is important in case the rendered str was not '\n'-terminated
       xCmdWndView.repaint;
+      %fprintf('\b');  % Jacob D's FEX comment 14/6/2016 (sometimes makes things worse!) https://mail.google.com/mail/u/0/#inbox/15551268609f9fef
 
       % The following is for debug use only:
       el(end+1) = handle(docElement);  %#ok used in debug only
@@ -314,8 +333,8 @@ function [underlineFlag,boldFlag,style,debugFlag] = processStyleInfo(style)
       end
   end
 
-  % Style = valid matlab RGB vector
-  if isnumeric(style) && length(style)==3 && all(style<=1) && all(abs(style)>=0)
+  % Style = valid matlab RGB vector: [0.1,0.2,0.3] or [25,50,75]
+  if isnumeric(style) && length(style)==3 && all(style<=255) && all(abs(style)>=0)
       if any(style<0)
           underlineFlag = 1;
           style = abs(style);
@@ -324,6 +343,15 @@ function [underlineFlag,boldFlag,style,debugFlag] = processStyleInfo(style)
 
   elseif ~ischar(style)
       error('YMA:cprintf:InvalidStyle','Invalid style - see help section for a list of valid style values')
+
+  % #RGB in hex mode (suggested by Andres Tönnesmann 26/3/21 https://mail.google.com/mail/u/0/#inbox/FMfcgxwLtGlbzftbfKJwWLNZKpSqzHhR)
+  elseif style(1) == '#'
+      hexCode = style(2:min(end,7));
+      if length(hexCode)==3, hexCode = reshape([hexCode;hexCode],1,[]); end  % #a5f -> #aa55ff
+      hexCode = sprintf('%06s',hexCode);  % pad with leading 00s
+      hexCode = reshape(hexCode,2,3)';  % '1a2b3c' -> ['1a'; '2b'; '3c']
+      rgb = hex2dec(hexCode);  % convert to [r,g,b] tripplet (0-255 values)
+      style = getColorStyle(rgb);
 
   % Style name
   else
@@ -365,7 +393,8 @@ function [underlineFlag,boldFlag,style,debugFlag] = processStyleInfo(style)
 
 % Convert a Matlab RGB vector into a known style name (e.g., '[255,37,0]')
 function styleName = getColorStyle(rgb)
-  intColor = int32(rgb*255);
+  if all(rgb<=1), rgb = rgb*255; end  % 0.5 -> 127
+  intColor = int32(rgb);
   javaColor = java.awt.Color(intColor(1), intColor(2), intColor(3));
   styleName = sprintf('[%d,%d,%d]',intColor);
   com.mathworks.services.Prefs.setColorPref(styleName,javaColor);
@@ -466,6 +495,11 @@ function setElementStyle(docElement,style,specialFlag, majorVersion,minorVersion
           try
               if urlTargets(urlIdx).length < 1
                   urlTargets(urlIdx) = [];  % '' => []
+              else  % fix for hyperlinks by T. Hosman 25/11/2019 (via email)
+                  if urlIdx > 1
+                      styles(urlIdx-1) = jStyle;
+                  end
+                  styles(urlIdx) = jStyle; %=java.lang.String('CWLink');
               end
           catch
               % never mind...
@@ -501,20 +535,24 @@ function dumpElement(docElements)
       docElement = docElements(elementIdx);
       if ~isjava(docElement),  docElement = docElement.java;  end
       %docElement.dump(java.lang.System.out,1)
-      disp(docElement)
-      tokens = docElement.getAttribute('SyntaxTokens');
-      if isempty(tokens),  continue;  end
-      links = docElement.getAttribute('LinkStartTokens');
-      urls  = docElement.getAttribute('HtmlLink');
-      try bolds = docElement.getAttribute('BoldStartTokens'); catch, bolds = []; end
+      disp(strtrim(char(docElement)))
       txt = {};
-      tokenLengths = tokens(1);
-      for tokenIdx = 1 : length(tokenLengths)-1
-          tokenLength = diff(tokenLengths(tokenIdx+[0,1]));
-          if (tokenLength < 0)
-              tokenLength = docElement.getEndOffset - docElement.getStartOffset - tokenLengths(tokenIdx);
+      try
+          tokens = docElement.getAttribute('SyntaxTokens');
+          %if isempty(tokens),  continue;  end
+          links = docElement.getAttribute('LinkStartTokens');
+          urls  = docElement.getAttribute('HtmlLink');
+          try bolds = docElement.getAttribute('BoldStartTokens'); catch, bolds = []; end
+          tokenLengths = tokens(1);
+          for tokenIdx = 1 : length(tokenLengths)-1
+              tokenLength = diff(tokenLengths(tokenIdx+[0,1]));
+              if (tokenLength < 0)
+                  tokenLength = docElement.getEndOffset - docElement.getStartOffset - tokenLengths(tokenIdx);
+              end
+              txt{tokenIdx} = cmdWinDoc.getText(docElement.getStartOffset+tokenLengths(tokenIdx),tokenLength).char;  %#ok
           end
-          txt{tokenIdx} = cmdWinDoc.getText(docElement.getStartOffset+tokenLengths(tokenIdx),tokenLength).char;  %#ok
+      catch
+          tokenLengths = 0;
       end
       lastTokenStartOffset = docElement.getStartOffset + tokenLengths(end);
       try
@@ -524,7 +562,7 @@ function dumpElement(docElements)
       end
       %cmdWinDoc.uiinspect
       %docElement.uiinspect
-      txt = strrep(txt',sprintf('\n'),'\n');
+      txt = strrep(txt',sprintf('\n'),'\n'); %#ok<SPRINTFN>
       try
           data = [cell(tokens(2)) m2c(tokens(1)) m2c(links) m2c(urls(1)) cell(urls(2)) m2c(bolds) txt];
           if elementIdx==1
@@ -535,12 +573,16 @@ function dumpElement(docElements)
           try
               data = [cell(tokens(2)) m2c(tokens(1)) m2c(links) txt];
           catch
-              disp([cell(tokens(2)) m2c(tokens(1)) txt]);
               try
+                  disp([cell(tokens(2)) m2c(tokens(1)) txt]);
                   data = [m2c(links) m2c(urls(1)) cell(urls(2))];
               catch
-                  % Mtlab 7.1 only has urls(1)...
-                  data = [m2c(links) cell(urls)];
+                  % Matlab 7.1 only has urls(1)...
+                  try
+                      data = [m2c(links) cell(urls)];
+                  catch  % no tokens
+                      data = txt;
+                  end
               end
           end
       end
