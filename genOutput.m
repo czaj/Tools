@@ -75,7 +75,7 @@ for i = 1:Dim1
                HeadsTmp = cell(headssize,size(Block,2));
                for l = 1:(size(Block,2)/4)
                    ResultsTmp(:,(l-1)*4+2) = star_sig_cell(Block(:,l*4));
-               end
+               end               
                for s=1:headssize
                    indxh = find(~cellfun(@isempty,Heads.(Template1{i,j})(:,s)));
                    indxh = indxh(end);
@@ -192,7 +192,7 @@ for i = 1:Dim1
     end
 end
 
-
+% save tmp1
 
 %ResultsOut(1+size(Results.(Template1{1,1}),1):end,:) =[ResultsOut(1+size(Results.(Template1{1,1}),1):end,1) cellstr(repmat(' ',size(ResultsOut,1) -size(Results.(Template1{1,1}),1) ,1)) ResultsOut(1+size(Results.(Template1{1,1}),1):end,2:end)];
 
@@ -483,9 +483,9 @@ if nargin == 11
     end
 
     ResultsOut = [ResultsOut;StatsOut];
-    
-    
+        
 end
+
 if EstimOpt.Display ~= 0
         disp(' ')
         clocknote = clock;
@@ -494,6 +494,7 @@ if EstimOpt.Display ~= 0
         disp(['Estimation completed on ' DayName ', ' num2str(clocknote(1)) '-' sprintf('%02.0f',clocknote(2)) '-' sprintf('%02.0f',clocknote(3)) ' at ' sprintf('%02.0f',clocknote(4)) ':' sprintf('%02.0f',clocknote(5)) ':' sprintf('%02.0f',clocknote(6))])
         disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
 end 
+
 % excel
 try
 fullOrgTemplate = which('template.xls');
@@ -505,7 +506,7 @@ else
     fullSaveName = strcat(currFld,'\', Head(1,1), '_results.xls');
 end
 
-copyfile(fullOrgTemplate,'templateTMP.xls')
+copyfile(fullOrgTemplate,'templateTMP.xls','f')
 fullTMPTemplate = which('templateTMP.xls');
 try
     ex = actxGetRunningServer('Excel.Application');
