@@ -14,6 +14,13 @@ if EstimOpt.Rows ~= EstimOpt.NP * EstimOpt.NCT
     error ('Dataset needs to include the same number of choice tasks and alternatives per person. Some can later be skipped with EstimOpt.DataComplete and EstimOpt.MissingInd')
 end
 
+for i=1:length(inputnames)
+    if size(INPUT.(inputnames{(i)}),1) ~= EstimOpt.NP*EstimOpt.NAlt*EstimOpt.NCT
+        fprintf('\nWarning: INPUT.%s has incorrect length\n', i, inputnames{(i)})
+        error('Warning: Please check if each vector in INPUT has the same length (NAlt*NCT*NP)')
+    end
+end
+
 if isfield(INPUT,'MissingInd') == 0 || isempty(INPUT.MissingInd)
     INPUT.MissingInd = zeros(size(INPUT.Y));
 end
