@@ -73,7 +73,7 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
 %    functionality. It works on Matlab 7+, but use at your own risk!
 %
 %    A technical description of the implementation can be found at:
-%    <a href="http://undocumentedmatlab.com/blog/cprintf/">http://UndocumentedMatlab.com/blog/cprintf/</a>
+%    <a href="http://undocumentedmatlab.com/articles/cprintf">http://UndocumentedMatlab.com/articles/cprintf</a>
 %
 % Limitations:
 %    1. In R2011a and earlier, a single space char is inserted at the
@@ -101,19 +101,21 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
 %    6. Bold style is only supported on R2011b+, and cannot also be underlined.
 %
 % Change log:
-%    2021-04-07: Enabled specifying color as #RGB (hexa codes), [.1,.7,.3], [26,178,76]
-%    2020-01-20: Fix by T. Hosman for embedded hyperlinks
-%    2015-06-24: Fixed a few discoloration issues (some other issues still remain)
-%    2015-03-20: Fix: if command window isn't defined yet (startup) use standard fprintf as suggested by John Marozas
-%    2012-08-09: Graceful degradation support for deployed (compiled) and non-desktop applications; minor bug fixes
-%    2012-08-06: Fixes for R2012b; added bold style; accept RGB string (non-numeric) style
-%    2011-11-27: Fixes for R2011b
-%    2011-08-29: Fix by Danilo (FEX comment) for non-default text colors
-%    2011-03-04: Performance improvement
-%    2010-06-27: Fix for R2010a/b; fixed edge case reported by Sharron; CPRINTF with no args runs the demo
-%    2009-09-28: Fixed edge-case problem reported by Swagat K
-%    2009-05-28: corrected nargout behavior suggested by Andreas Gäb
 %    2009-05-13: First version posted on <a href="http://www.mathworks.com/matlabcentral/fileexchange/authors/27420">MathWorks File Exchange</a>
+%    2009-05-28: corrected nargout behavior suggested by Andreas Gäb
+%    2009-09-28: Fixed edge-case problem reported by Swagat K
+%    2010-06-27: Fix for R2010a/b; fixed edge case reported by Sharron; CPRINTF with no args runs the demo
+%    2011-03-04: Performance improvement
+%    2011-08-29: Fix by Danilo (FEX comment) for non-default text colors
+%    2011-11-27: Fixes for R2011b
+%    2012-08-06: Fixes for R2012b; added bold style; accept RGB string (non-numeric) style
+%    2012-08-09: Graceful degradation support for deployed (compiled) and non-desktop applications; minor bug fixes
+%    2015-03-20: Fix: if command window isn't defined yet (startup) use standard fprintf as suggested by John Marozas
+%    2015-06-24: Fixed a few discoloration issues (some other issues still remain)
+%    2020-01-20: Fix by T. Hosman for embedded hyperlinks
+%    2021-04-07: Enabled specifying color as #RGB (hexa codes), [.1,.7,.3], [26,178,76]
+%    2022-01-04: Fixed cases of invalid colors (especially bad on R2021b onward)
+%    2022-03-26: Fixed cases of using string (not char) inputs
 %
 % See also:
 %    sprintf, fprintf
@@ -122,7 +124,7 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
 % referenced and attributed as such. The original author maintains the right to be solely associated with this work.
 
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
-% $Revision: 1.12 $  $Date: 2021/04/07 01:02:53 $
+% $Revision: 1.14 $  $Date: 2022/03/26 20:48:51 $
 
   persistent majorVersion minorVersion
   if isempty(majorVersion)
@@ -136,10 +138,11 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
   end
 
   % The following is for debug use only:
-  %global docElement txt el
+  %global docElement el debugData
   if ~exist('el','var') || isempty(el),  el=handle([]);  end  %#ok mlint short-circuit error ("used before defined")
   if nargin<1, showDemo(majorVersion,minorVersion); return;  end
   if isempty(style),  return;  end
+  if isa(style,'string'), style = char(style); end
   if all(ishandle(style)) && length(style)~=3
       dumpElement(style);
       return;
@@ -147,6 +150,7 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
 
   % Process the text string
   if nargin<2, format = style; style='text';  end
+  if isa(format,'string'), format = char(format); end
   %error(nargchk(2, inf, nargin, 'struct'));
   %str = sprintf(format,varargin{:});
 
@@ -235,15 +239,21 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
       % Note: fprintf(2,...) is required in order to add formatting tokens, which
       % ^^^^  can then be updated below (no such tokens when outputting to stdout)
       %format(end+1) = ' ';  % Jacob D's FEX comment 14/6/2016 (sometimes makes things worse!) https://mail.google.com/mail/u/0/#inbox/15551268609f9fef
+      cmdWinLen = cmdWinDoc.getLength;
+      cmdWinLenPrev = cmdWinLen;
       count1 = fprintf(2,format,varargin{:});
 
-      % Repaint the command window
-      %awtinvoke(cmdWinDoc,'remove',lastPos,1);   % TODO: find out how to remove the extra '_'
-      drawnow;  % this is necessary for the following to work properly (refer to Evgeny Pr in FEX comment 16/1/2011)
-      xCmdWndView.repaint;
-      %pause(0.01);
-      %hListeners = cmdWinDoc.getDocumentListeners; for idx=1:numel(hListeners), try hListeners(idx).repaint; catch, end, end
-      cmdWinLen = cmdWinDoc.getLength;
+      % Repaint the command window (wait a bit for the async update to complete)
+      iter = 0;
+      while count1 > 0 && cmdWinLen <= cmdWinLenPrev && iter < 100
+          %awtinvoke(cmdWinDoc,'remove',lastPos,1);   % TODO: find out how to remove the extra '_'
+          drawnow;  % this is necessary for the following to work properly (refer to Evgeny Pr in FEX comment 16/1/2011)
+          pause(0.01);
+          xCmdWndView.repaint;
+          %hListeners = cmdWinDoc.getDocumentListeners; for idx=1:numel(hListeners), try hListeners(idx).repaint; catch, end, end
+          cmdWinLen = cmdWinDoc.getLength;
+          iter = iter + 1;
+      end
 
       docElement = cmdWinDoc.getParagraphElement(lastPos+1);
       if majorVersion<7 || (majorVersion==7 && minorVersion<13)
@@ -262,7 +272,8 @@ function count = cprintf(style,format,varargin) %#ok<*JAPIMATHWORKS>
       end
 
       % Get the Document Element(s) corresponding to the latest fprintf operation
-      while docElement.getStartOffset < cmdWinLen
+      %debugData = [iter, count1, lastPos, docElement.getStartOffset, cmdWinLen];
+      while docElement.getStartOffset <= cmdWinLen
           % Set the element style according to the current style
           if debugFlag, dumpElement(docElement); end
           specialFlag = underlineFlag | boldFlag;
@@ -401,7 +412,7 @@ function styleName = getColorStyle(rgb)
 
 % Fix a bug in some Matlab versions, where the number of URL segments
 % is larger than the number of style segments in a doc element
-function delta = getUrlsFix(docElement)  %#ok currently unused
+function delta = getUrlsFix(docElement)  %currently unused
   tokens = docElement.getAttribute('SyntaxTokens');
   links  = docElement.getAttribute('LinkStartTokens');
   if length(links) > length(tokens(1))
@@ -441,7 +452,7 @@ function fixHyperlink(docElement)
 % Set an element to a particular style (color)
 function setElementStyle(docElement,style,specialFlag, majorVersion,minorVersion)
   %global tokens links urls urlTargets  % for debug only
-  global oldStyles
+  global oldStyles %#ok<GVMIS>
   if nargin<3,  specialFlag=0;  end
   % Set the last Element token to the requested style:
   % Colors:
@@ -598,7 +609,7 @@ function cells = m2c(data)
 function showDemo(majorVersion,minorVersion)
   fprintf('cprintf displays formatted text in the Command Window.\n\n');
   fprintf('Syntax: count = cprintf(style,format,...);  click <a href="matlab:help cprintf">here</a> for details.\n\n');
-  url = 'http://UndocumentedMatlab.com/blog/cprintf/';
+  url = 'http://UndocumentedMatlab.com/articles/cprintf';
   fprintf(['Technical description: <a href="' url '">' url '</a>\n\n']);
   fprintf('Demo:\n\n');
   boldFlag = majorVersion>7 || (majorVersion==7 && minorVersion>=13);
