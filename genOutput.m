@@ -4,6 +4,8 @@ if nargin < 10
     Type = 0;
 end
 
+% save tmp1
+
 if ~isfield(EstimOpt,'xlsOverwrite')
     EstimOpt.xlsOverwrite = 1;
 end
