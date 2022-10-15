@@ -167,6 +167,7 @@ if isfield(INPUT,'W') && ~isempty(INPUT.W)
 else
     INPUT.W = ones(EstimOpt.NP,1);
 end
+INPUT.W = ReplicateRows(INPUT.W,EstimOpt.NCT);
 
 if isfield(EstimOpt,'RobustStd') == 0
     EstimOpt.RobustStd = 0; % do not use robust standard errors
