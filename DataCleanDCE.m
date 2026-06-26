@@ -56,7 +56,11 @@ if sum(MissingP) > 0 % respondents with 0 NCTs - remove from INPUT
         if isempty(tmp)
             continue
         elseif isequal(INPUT_fields{i},'TIMES') % || isequal(INPUT_fields{i},'W')
-            tmp(reshape(MissingP,[size(MissingP,3),1]),:) = [];
+            if isscalar(tmp)
+                continue
+            else
+                tmp(reshape(MissingP,[size(MissingP,3),1]),:) = [];
+            end
         else
             tmp(MissingPrep,:) = [];
         end
@@ -164,6 +168,33 @@ EstimOpt.NAltMiss = EstimOpt.NAlt - squeeze(sum(sum(EstimOpt.MissingAlt,1),2)./(
 
 EstimOpt.NObs = sum(INPUT.TIMES);
 
+% Automatically detect missing measurement variables after all sample filters
+% and respondent removals have been applied.  Users do not need to define
+% EstimOpt.MissingIndMea in scripts; if they do, compatible indicators are
+% combined with the NaN/Inf-based indicator.
+if isfield(INPUT,'Xmea') && ~isempty(INPUT.Xmea)
+    AutoMissingIndMea = ~isfinite(INPUT.Xmea);
+    if isfield(EstimOpt,'MissingIndMea') && ~isempty(EstimOpt.MissingIndMea)
+        UserMissingIndMea = EstimOpt.MissingIndMea ~= 0;
+        if isequal(size(UserMissingIndMea),size(INPUT.Xmea))
+            EstimOpt.MissingIndMea = UserMissingIndMea | AutoMissingIndMea;
+        elseif size(INPUT.Xmea,1) == EstimOpt.NAlt*EstimOpt.NCT*EstimOpt.NP && isequal(size(UserMissingIndMea),[EstimOpt.NP,size(INPUT.Xmea,2)])
+            RowPerP_tmp = EstimOpt.NAlt*EstimOpt.NCT;
+            RespInd_tmp = ceil((1:size(INPUT.Xmea,1))'/RowPerP_tmp);
+            EstimOpt.MissingIndMea = UserMissingIndMea(RespInd_tmp,:) | AutoMissingIndMea;
+            clear RowPerP_tmp RespInd_tmp;
+        else
+            cprintf(rgb('DarkOrange'),'WARNING: EstimOpt.MissingIndMea has incompatible size after filtering - ignoring it and detecting missing Xmea from INPUT.Xmea.\n')
+            EstimOpt.MissingIndMea = AutoMissingIndMea;
+        end
+        clear UserMissingIndMea;
+    else
+        EstimOpt.MissingIndMea = AutoMissingIndMea;
+    end
+    INPUT.Xmea(EstimOpt.MissingIndMea == 1) = NaN;
+    clear AutoMissingIndMea;
+end
+
 if isfield(INPUT,'W') && ~isempty(INPUT.W)
     if any(size(INPUT.W(:)) ~= size(INPUT.Y(:)))
         error('Incorrect size of the weights vector')
@@ -171,8 +202,8 @@ if isfield(INPUT,'W') && ~isempty(INPUT.W)
         INPUT.W = INPUT.W(:);
 %         INPUT.W = INPUT.W(INPUT.Y(:)==1);
 %         INPUT.W = INPUT.W(1:EstimOpt.NCT:end);
-        INPUT.W = INPUT.W(1:EstimOpt.NCT.*EstimOpt.NAlt:end);
-        if (sum(INPUT.W) ~= EstimOpt.NP) && (~isfield('EstimOpt','NoScalingW') || EstimOpt.NoScalingW == 0)
+        INPUT.W = INPUT.W(1:(EstimOpt.NCT*EstimOpt.NAlt):end);
+        if (sum(INPUT.W) ~= EstimOpt.NP) && (~isfield(EstimOpt,'NoScalingW') || EstimOpt.NoScalingW == 0)
             cprintf(rgb('DarkOrange'), ['WARNING: Scaling weights for unit mean. \n'])
             INPUT.W = INPUT.W.*size(INPUT.W,1)./sum(INPUT.W);
         end
@@ -216,19 +247,21 @@ if isfield(EstimOpt,'NumGrad') == 0 || (EstimOpt.NumGrad ~= 0 && EstimOpt.NumGra
     EstimOpt.NumGrad = 0; % 1 for numerical gradient, 0 for analytical
 end
 
-if isfield(EstimOpt,'HessEstFix') == 0 || (EstimOpt.HessEstFix ~= 0 && EstimOpt.HessEstFix ~= 1)
-    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = use jacobian-based (BHHH) Hessian, 2 - use high-precision jacobian-based (BHHH) Hessian 3 - use numerical Hessian
+if isfield(EstimOpt,'HessEstFix') == 0 || ~ismember(EstimOpt.HessEstFix,0:4)
+    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = BHHH, 2 = high-precision BHHH, 3 = numerical Hessian, 4 = analytical Hessian
 end
 
 if isfield(EstimOpt,'ApproxHess') == 0 || (EstimOpt.ApproxHess ~= 0 && EstimOpt.ApproxHess ~= 1)
     EstimOpt.ApproxHess = 1;
 end
 
-if isfield(EstimOpt,'RealMin') == 0 || (EstimOpt.RealMin ~= 0 && EstimOpt.RealMin ~= 1)
+if isfield(EstimOpt,'RealMin') == 0 || ~ismember(EstimOpt.RealMin,0:3)
     EstimOpt.RealMin = 0;
 end
 
-EstimOpt.Draws = 6; % 1 - pseudo-random, 2 - Latin Hypercube, 3 - Halton, 4 - Halton RR scrambled, 5 - Sobol, 6 - Sobol MAO scrambled
+if ~ismember(EstimOpt.Draws,1:6)
+    EstimOpt.Draws = 6; % 1 - pseudo-random, 2 - Latin Hypercube, 3 - Halton, 4 - Halton RR scrambled, 5 - Sobol, 6 - Sobol MAO scrambled
+end
 EstimOpt.NSdSim = 1e4; % number of draws for simulating standard deviations
 
 
@@ -253,7 +286,7 @@ elseif isfield(EstimOpt,'eps')
     OptimOpt.FunctionTolerance = EstimOpt.eps;
 end
 if isfield(EstimOpt,'StepTolerance')
-    OptimOpt.StepTolerance = EstimOpt.TolX; % step precision level
+    OptimOpt.StepTolerance = EstimOpt.StepTolerance; % step precision level
 elseif isfield(EstimOpt,'eps')
     OptimOpt.StepTolerance = EstimOpt.eps;
 end

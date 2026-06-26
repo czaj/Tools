@@ -1,4 +1,4 @@
-function [jac,err] = jacobianest(fun,x0)
+function [jac,err] = jacobianest(fun,x0,BActive)
 % gradest: estimate of the Jacobian matrix of a vector valued function of n variables
 % usage: [jac,err] = jacobianest(fun,x0)
 %
@@ -66,8 +66,20 @@ function [jac,err] = jacobianest(fun,x0)
 % Release: 1.0
 % Release date: 3/6/2007
 
+% save tmp2
+
 % get the length of x0 for the size of jac
 nx = numel(x0);
+
+if nargin < 3 || isempty(BActive)
+  BActive = ones(nx,1);
+end
+BActive = BActive(:) ~= 0;           % logical column
+if numel(BActive) ~= nx
+  error('BActive must have length numel(x0).')
+end
+active_idx = find(BActive);
+
 
 MaxStep = 100;
 StepRatio = 2.0000001;
@@ -94,7 +106,10 @@ nsteps = length(relativedelta);
 % total number of derivatives we will need to take
 jac = zeros(n,nx);
 err = jac;
-for i = 1:nx
+% for i = 1:nx
+for ii = 1:numel(active_idx)
+  i = active_idx(ii);
+
   x0_i = x0(i);
   if x0_i ~= 0
     delta = x0_i*relativedelta;
@@ -107,7 +122,7 @@ for i = 1:nx
   fdel = zeros(n,nsteps);
   for j = 1:nsteps
     fdif = fun(swapelement(x0,i,x0_i + delta(j))) - ...
-      fun(swapelement(x0,i,x0_i - delta(j)));
+        fun(swapelement(x0,i,x0_i - delta(j)));
     
     fdel(:,j) = fdif(:);
   end

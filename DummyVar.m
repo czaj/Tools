@@ -1,137 +1,192 @@
-function D = dummyvar(group,varargin)
-%DUMMYVAR Dummy variable coding.
-%   X=DUMMYVAR(GROUP) returns a matrix X containing zeros and ones, whose
-%   columns are dummy variables for the grouping variable GROUP.  GROUP can be
-%   a categorical or numeric column vector.  The I'th dummy variable column in
-%   X contains ones in elements where values in GROUP specify the I'th group.
+function D = DummyVar(group, varargin)
+%DUMMYVAR Dummy variable coding with unique-level handling.
+%   X = DUMMYVAR(GROUP) returns a matrix X of 0/1 dummies for GROUP, using
+%   only the levels that actually appear in GROUP.
+%   - Numeric data: levels are sorted ascending by value.
+%   - Text/categorical: levels are sorted lexicographically.
 %
-%   The order of the dummy variable columns in X matches the order of the
-%   groups defined by GROUP.  When GROUP is a categorical vector, the groups
-%   and their order match the output of the CATEGORIES(GROUP) method.   When
-%   GROUP is a numeric vector, DUMMYVAR assumes that the groups and their
-%   order are 1:MAX(GROUP).  NOTE: In this respect, DUMMYVARS treats a numeric
-%   grouping variable differently than GRP2IDX.
+%   X = DUMMYVAR(GROUP, ColumnSkip) removes the ColumnSkip-th dummy column,
+%   where ColumnSkip refers to the n-th level in the ascending order above.
+%   (When GROUP contains multiple grouping variables, ColumnSkip applies only
+%   when there is exactly one grouping variable; otherwise it is ignored.)
 %
-%   GROUP can also be a cell array containing one or more grouping variables.
-%   See "help groupingvariable" for more information.  GROUP can also be a
-%   numeric matrix, and DUMMYVARS treats each column as a separate numeric
-%   grouping variable, as described above.  With multiple grouping variables,
-%   the sets of dummy variable columns are in the same order as the grouping
-%   variables in GROUP.
+%   GROUP may be:
+%     - a numeric vector/matrix (each column is a grouping variable),
+%     - a categorical vector,
+%     - a cellstr vector,
+%     - a cell array whose elements are grouping vectors (possibly mixed types).
 %
-%   DUMMYVAR returns a full set of dummy variables for each grouping variable.
-%   To create a regression design matrix, you may need to use a smaller set of
-%   dummy variables so that SUM(X,2) is not identical to the column in the
-%   design matrix that corresponds to the regression intercept.  You can, for
-%   example, delete the first or the last dummy variable for each grouping
-%   variable.
+%   Missing values (NaN / <undefined> / "") yield NaN in the corresponding
+%   dummy block row.
 %
-%   Example: Suppose we are studying the effects of two machines and three
-%   operators on a process.  The first column of GROUP would have the
-%   values one or two depending on which machine was used.  The second
-%   column of GROUP would have the values one, two, or three depending on
-%   which operator ran the machine.
+%   Example:
+%       g = [10 20 10 30 20 10]';
+%       X = DummyVar(g)           % levels: [10 20 30] -> 3 columns
+%       X2 = DummyVar(g, 2)       % drops the 2nd level (20)
 %
-%       machine = [1 1 1 1 2 2 2 2]';
-%       oper    = [1 2 3 1 2 3 1 2]';
-%       x = dummyvar([machine oper])
-%
-%   See also GROUPINGVARIABLE.
+%   See also CATEGORICAL, UNIQUE, REMOVECATS.
 
-%   Copyright 1993-2013 The MathWorks, Inc. 
+%   © You, 2025. Based on MathWorks' original DUMMYVAR documentation pattern.
 
-
-
-
+% ---- Parse ColumnSkip
 if nargin > 1
     ColumnSkip = varargin{1};
 else
     ColumnSkip = 0;
 end
 
-if isa(group,'categorical')
-    % group by a categorical (nominal or ordinal) variable
-    [m,n] = size(group);
-    if n~=1
-        error(message('stats:dummyvar:BadCateGroup'));
+% ---- Normalize GROUP into a matrix of grouping variables (as columns)
+[G, m, n, levelsPerCol] = normalize_group(group);
+
+% ---- Build dummy matrix with exactly the present (unique) levels
+k_per_col = cellfun(@numel, levelsPerCol);
+total_cols = sum(k_per_col);
+D = zeros(m, total_cols);
+
+col_offset = 0;
+for j = 1:n
+    idx = G(:, j); % integer codes 1..K_j for present levels, NaN for missing
+    K = k_per_col(j);
+
+    % set NaN rows for this block to NaN
+    nan_rows = isnan(idx);
+    if any(nan_rows)
+        D(nan_rows, col_offset + (1:K)) = NaN;
     end
-    maxg = length(categories(group));
-    group = double(group);
-elseif iscell(group)
-    % collection of grouping variables in a cell array
-    n = numel(group);
-    for j=1:n
-        gj = group{j};
-        gj = grp2idx(gj);
-        if j==1
-            m = size(gj,1);
-            G = zeros(m,n);
-        else
-            if size(gj,1)~=m
-                error(message('stats:dummyvar:InputSizeMismatch'));
-            end
+
+    % place ones via linear indices
+    rows = find(~nan_rows);
+    cols = col_offset + idx(rows);
+    lin = sub2ind([m, total_cols], rows, cols);
+    D(lin) = 1;
+
+    col_offset = col_offset + K;
+end
+
+% ---- Apply ColumnSkip only for single grouping variable (clear semantics)
+if (n == 1) && ColumnSkip ~= 0
+    K = k_per_col(1);
+    if ColumnSkip < 1 || ColumnSkip > K
+        warning('DummyVar:ColumnSkipOutOfRange', ...
+            ['ColumnSkip=%d is out of range for %d level(s); ' ...
+             'skipping the first level instead.'], ColumnSkip, K);
+        ColumnSkip = 1;
+    end
+    D(:, ColumnSkip) = [];
+end
+
+end % function DummyVar
+
+% ======================================================================
+function [G, m, n, levelsPerCol] = normalize_group(group)
+% Returns:
+%   G  : m-by-n numeric matrix of integer codes (1..K_j), NaN for missing
+%   m,n: size
+%   levelsPerCol: 1-by-n cell, each is a vector/cellstr of sorted unique levels
+
+    levelsPerCol = {};
+    if isa(group,'categorical')
+        % single categorical vector
+        if size(group,2) ~= 1
+            error('stats:dummyvar:BadCateGroup', ...
+                  'Categorical grouping variable must be a column vector.');
         end
-        G(:,j) = double(gj);
+        [codes, levels] = encode_one(group);
+        G = codes;
+        m = size(G,1); n = 1;
+        levelsPerCol = {levels};
+
+    elseif iscell(group) && ~ischar(group)
+        % cell array of grouping vectors (possibly mixed types)
+        n = numel(group);
+        codesAll = cell(1,n);
+        levelsPerCol = cell(1,n);
+        m = [];
+        for j = 1:n
+            gj = group{j};
+            [codes, levels] = encode_one(gj);
+            if isempty(m)
+                m = size(codes,1);
+            elseif size(codes,1) ~= m
+                error('stats:dummyvar:InputSizeMismatch', ...
+                      'All grouping variables must have the same number of rows.');
+            end
+            codesAll{j} = codes;
+            levelsPerCol{j} = levels;
+        end
+        G = cell2mat(codesAll);
+
+    else
+        % numeric vector/matrix or cellstr vector
+        if isvector(group)
+            group = group(:);
+        end
+        [m,n] = size(group);
+        G = zeros(m,n);
+        levelsPerCol = cell(1,n);
+        for j = 1:n
+            [codes, levels] = encode_one(group(:,j));
+            G(:,j) = codes;
+            levelsPerCol{j} = levels;
+        end
     end
-    group = G;
-    maxg = max(group);
-else
-    % vector or matrix whose columns are grouping variables
-    if ~ismatrix(group)
-        error(message('stats:dummyvar:BadSizedGroup'));
+
+    % Make sure G is double
+    G = double(G);
+end
+
+% ======================================================================
+function [codes, levels] = encode_one(gj)
+% Map a single grouping vector gj into:
+%   codes  : m-by-1 integer codes 1..K in ascending level order; NaN for missing
+%   levels : the sorted list of present levels (numeric ascending or lexicographic)
+
+    m = numel(gj);
+
+    if isa(gj,'categorical')
+        miss = ismissing(gj);
+        % turn into cellstr for lexicographic sorting of present categories
+        s = cellstr(gj);
+        s = s(:);
+        s(miss) = [];                 % drop missings before unique
+        levels = unique(s);           % lexicographic ascending
+        % Build map from string to code
+        codes = nan(m,1);
+        if ~isempty(levels)
+            % Create dictionary
+            [~,~,ic] = unique(cellstr(gj(~miss))); % ic maps present rows -> compact
+            % But ic follows category order; rebuild using our "levels"
+            presentVals = cellstr(gj(~miss));
+            [~, pos] = ismember(presentVals, levels);
+            codes(~miss) = pos;
+        end
+
+    elseif iscellstr(gj) || (iscell(gj) && all(cellfun(@ischar, gj)))
+        % cell array of char
+        gj = gj(:);
+        miss = cellfun(@(x) isempty(x) || (isstring(x) && strlength(x)==0), gj);
+        vals = gj(~miss);
+        levels = unique(vals);        % lexicographic ascending
+        codes = nan(m,1);
+        if ~isempty(levels)
+            [~, pos] = ismember(vals, levels);
+            codes(~miss) = pos;
+        end
+
+    elseif isstring(gj)
+        gj = cellstr(gj);             % delegate to cellstr branch
+        [codes, levels] = encode_one(gj);
+
+    else
+        % numeric (or logical)
+        gj = double(gj(:));
+        miss = isnan(gj);
+        vals = gj(~miss);
+        levels = unique(vals);        % numeric ascending
+        codes = nan(m,1);
+        if ~isempty(levels)
+            [~, pos] = ismember(vals, levels);
+            codes(~miss) = pos;
+        end
     end
-        
-    if min(unique(group)) == 0
-        group = group + 1;
-    end
-    
-    [m,n] = size(group);
-    if m == 1
-        m = n;
-        n = 1;
-        group = group(:);
-    end
-    maxg = max(group);
-end
-
-if any(any(group - round(group))) ~= 0 || any(any(group<=0))
-   error(message('stats:dummyvar:BadGroup'));
-end
-if ~isfloat(group)
-   group = double(group);
-end
-
-idxnan = isnan(maxg);
-if any(idxnan)
-    maxg(idxnan)=0; % set NaN to zero    
-    nanstr = sprintf(', %d',find(idxnan));
-    warning(message('stats:dummyvar:AllNaNs',nanstr(3:end)));
-end
-
-if (ColumnSkip ~= 0) && ((ColumnSkip < 1) || (ColumnSkip > maxg))
-    cprintf(rgb('DarkOrange'),'WARNING - index of categories to skeep not consistent with the size of the data (skipping the first category) \n');
-    ColumnSkip = 1;
-end
-
-colend = cumsum(maxg);          % end col for each var
-colidx = [0 colend(1:end-1)];   % for indexing each entry
-colstart = 1 + colidx;          % start col
-colidx = reshape(colidx(ones(m,1),:),m*n,1);
-
-colD = sum(maxg);
-D = zeros(m,colD,class(group));
-
-% Compute linear indices of ones based on row and column numbers
-row = (1:m)';
-row = reshape(row(:,ones(n,1)),m*n,1);
-idx = m*(colidx + group(:) - 1) + row;
-D(idx(~isnan(idx))) = 1;
-
-% Use NaN for the columns corresponding to a NaN in the input
-for j=1:size(group,2)
-    D(isnan(group(:,j)),colstart(j):colend(j)) = NaN;
-end
-
-if ColumnSkip ~= 0
-    D(:,ColumnSkip) = [];
 end
