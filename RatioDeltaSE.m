@@ -14,6 +14,7 @@ else
 end
 
 if specification_case < 3
+    assert(numel(B)==2, 'RatioDeltaSE: B must have exactly 2 elements for specification_case < 3.');
     
     m1 = B(1:end-1);
     m2 = B(end);

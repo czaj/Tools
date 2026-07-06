@@ -16,6 +16,13 @@ Voung = LR./std(LL1 - LL2);
 Voung = Voung/sqrt(N);
 
 pval = 2*(1 - normcdf(abs(Voung),0,1));
+if Voung > 0
+    disp('Direction: Model 1 is preferred')
+elseif Voung < 0
+    disp('Direction: Model 2 is preferred')
+else
+    disp('Direction: No preference between models')
+end
 
 disp(num2str(Voung,'Voung test statistics: %8.4f'))
 disp(num2str(pval,'pvalue: %1.4f'))

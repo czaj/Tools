@@ -18,41 +18,71 @@ if type == 0 || type == 2
 end
 
 if type == 0 % HMNL
-    ba = B(1:NVarA); % b atrybut體
+    ba = B(1:NVarA); % b atrybut贸w
     bm = reshape(B(NVarA+1:NVarA*(1+NVarM)),[NVarA,NVarM]);
     bl = reshape(B(NVarA*(1+NVarM)+1:NVarA*(NLatent+NVarM+1)),[NVarA,NLatent]); % b interakcji z LV
-    bs = B(NVarA*(NLatent+NVarM+1)+1:NVarA*(NLatent+NVarM+1)+NVarS); % b r體nania struktury
-    bstr = reshape(B(NVarA*(NLatent+NVarM+1)+NVarS+1:(NVarA+NVarStr)*NLatent+NVarA*(1+NVarM)+NVarS),[NVarStr,NLatent]); % b r體nania struktury
+    bs = B(NVarA*(NLatent+NVarM+1)+1:NVarA*(NLatent+NVarM+1)+NVarS); % b r贸wnania struktury
+    bstr = reshape(B(NVarA*(NLatent+NVarM+1)+NVarS+1:(NVarA+NVarStr)*NLatent+NVarA*(1+NVarM)+NVarS),[NVarStr,NLatent]); % b r贸wnania struktury
 
     if ScaleLV == 1
         bsLV = bs(NVarS-NLatent+1:end)';
-        bs = bs(1:NVarS-NLatent); 
+        bs = bs(1:NVarS-NLatent);
         NVarS = NVarS - NLatent;
     end
-    
+
     LV_tmp = X_str*bstr; % NP x NLatent
     LV_tmp = reshape(permute(LV_tmp(:,:, ones(NRep,1)),[2 3 1]),[NLatent,NRep*NP]); % NLatent*NRep*NP
 
     LV = LV_tmp + err_sliced; % NLatent x NRep*NP
     LV = (LV - mean(LV,2))./std(LV,0,2); % normalilzing for 0 mean and std
-    if NVarM > 0
+    if isfield(EstimOpt,'mCT')
+        mCT = EstimOpt.mCT ~= 0 && NVarM > 0;
+    else
+        mCT = false;
+    end
+    if mCT
+        if ndims(Xm) ~= 3
+            Xm = reshape(Xm,[NAlt*NCT,NVarM,NP]);
+        end
+        Xm_fit = bm*reshape(permute(Xm,[2 1 3]),[NVarM,NAlt*NCT*NP]);
+        Xm_fit = permute(reshape(Xm_fit,[NVarA,NAlt*NCT,NP]),[2 1 3]);
+        LV_fit = reshape(bl*LV,[NVarA,NRep,NP]);
+        b_mtx = reshape(ba,[1,NVarA,1,1]) + ...
+            reshape(Xm_fit,[NAlt*NCT,NVarA,1,NP]) + ...
+            reshape(LV_fit,[1,NVarA,NRep,NP]);
+    elseif NVarM > 0
         ba = ba + bm*Xm'; % NVarA x NP
         ba = reshape(permute(ba(:,:,ones(EstimOpt.NRep,1)),[1 3 2]),[NVarA,NRep*NP]);
     else
-        ba = ba(:,ones(EstimOpt.NP*EstimOpt.NRep,1)); 
+        ba = ba(:,ones(EstimOpt.NP*EstimOpt.NRep,1));
     end
-    b_mtx = ba + bl*LV;  % NVarA x NRep*NP  
+    if ~mCT
+        b_mtx = ba + bl*LV;  % NVarA x NRep*NP
+    end
 
-    if EstimOpt.WTP_space > 0
-        b_mtx(1:end-EstimOpt.WTP_space,:) = b_mtx(1:end-EstimOpt.WTP_space,:).*b_mtx(EstimOpt.WTP_matrix,:);
-    end
-    if any(EstimOpt.Dist ~= 0)
-        b_mtx(EstimOpt.Dist == 1,:) = exp(b_mtx(EstimOpt.Dist == 1,:)); 
+    if mCT
+        if any(EstimOpt.Dist ~= 0)
+            b_mtx(:,EstimOpt.Dist == 1,:,:) = exp(b_mtx(:,EstimOpt.Dist == 1,:,:));
+            b_mtx(:,EstimOpt.Dist == 2,:,:) = max(b_mtx(:,EstimOpt.Dist == 2,:,:),0);
+        end
+    elseif any(EstimOpt.Dist ~= 0)
+        b_mtx(EstimOpt.Dist == 1,:) = exp(b_mtx(EstimOpt.Dist == 1,:));
         b_mtx(EstimOpt.Dist == 2,:) = max(b_mtx(EstimOpt.Dist == 2,:),0);
+    end
+    if EstimOpt.WTP_space > 0
+        if mCT
+            b_mtx(:,1:end-EstimOpt.WTP_space,:,:) = b_mtx(:,1:end-EstimOpt.WTP_space,:,:).*b_mtx(:,EstimOpt.WTP_matrix,:,:);
+        else
+            b_mtx(1:end-EstimOpt.WTP_space,:) = b_mtx(1:end-EstimOpt.WTP_space,:).*b_mtx(EstimOpt.WTP_matrix,:);
+        end
     end
     if ScaleLV == 1
         ScaleLVX = exp(bsLV*LV);
-        b_mtx = ScaleLVX.*b_mtx; 
+        if mCT
+            b_mtx = b_mtx.*reshape(ScaleLVX,[1,1,NRep,NP]);
+        else
+            b_mtx = ScaleLVX.*b_mtx;
+        end
     end
 
     if NVarS > 0
@@ -60,14 +90,21 @@ if type == 0 % HMNL
        Xa = Xa.*Scale;
     end
     probs = zeros(EstimOpt.NP,EstimOpt.NRep);
-    b_mtx = reshape(b_mtx,[NVarA,EstimOpt.NRep,NP]);
-    
+    if ~mCT
+        b_mtx = reshape(b_mtx,[NVarA,EstimOpt.NRep,NP]);
+    end
+
     if any(isnan(Xa(:))) == 0 % faster version for complete dataset
         parfor n = 1:EstimOpt.NP
-            b_mtx_n = b_mtx(:,:,n);
             Xa_n = Xa(:,:,n);
             Yy_n = Y(:,n) == 1;
-            U = reshape(Xa_n*b_mtx_n,[NAlt,NCT,NRep]);
+            if mCT
+                b_mtx_n = b_mtx(:,:,:,n);
+                U = reshape(sum(Xa_n.*b_mtx_n,2),[NAlt,NCT,NRep]);
+            else
+                b_mtx_n = b_mtx(:,:,n);
+                U = reshape(Xa_n*b_mtx_n,[NAlt,NCT,NRep]);
+            end
             U = exp(U - max(U,[],1)); % rescale utility to avoid exploding
             U_sum = reshape(sum(U,1),[1,NCT,NRep]);
             U_prob = U./U_sum; % NAlt x NCT x NRep
@@ -78,17 +115,29 @@ if type == 0 % HMNL
             Xa_n = Xa(:,:,n);
             Yy_n = Y(:,n) == 1;
             YnanInd = ~isnan(Y(:,n));
-            b_mtx_n = b_mtx(:,:,n);
+            if mCT
+                b_mtx_n = b_mtx(:,:,:,n);
+            else
+                b_mtx_n = b_mtx(:,:,n);
+            end
             NAltMissIndExp_n = NAltMissIndExp(:,n);
             NAltMissIndExp_n = NAltMissIndExp_n(YnanInd);
-            if var(NAltMissIndExp_n(NAltMissIndExp_n > 0)) == 0 
-                U = reshape(Xa_n(YnanInd,:)*b_mtx_n,[NAltMiss(n),NCTMiss(n),NRep]);
+            if var(NAltMissIndExp_n(NAltMissIndExp_n > 0)) == 0
+                if mCT
+                    U = reshape(sum(Xa_n(YnanInd,:).*b_mtx_n(YnanInd,:,:),2),[NAltMiss(n),NCTMiss(n),NRep]);
+                else
+                    U = reshape(Xa_n(YnanInd,:)*b_mtx_n,[NAltMiss(n),NCTMiss(n),NRep]);
+                end
                 U = exp(U - max(U,[],1)); % NAlt x NCT - NaNs x NRep
                 U_sum = reshape(sum(U,1),[1,NCTMiss(n),NRep]);
                 U_prob = U./U_sum; % NAlt x NCT x NRep
                 probs(n,:) = prod(reshape(U_prob(Yy_n(YnanInd,ones(NRep,1))),[NCTMiss(n),NRep]),1); % 1 x NRep
             else
-                U = Xa_n(YnanInd,:)*b_mtx_n;
+                if mCT
+                    U = reshape(sum(Xa_n(YnanInd,:).*b_mtx_n(YnanInd,:,:),2),[sum(YnanInd),NRep]);
+                else
+                    U = Xa_n(YnanInd,:)*b_mtx_n;
+                end
                 Uniq = unique(NAltMissIndExp_n);
                 U_prob = zeros(size(U,1),1,NRep);
 
@@ -104,18 +153,18 @@ if type == 0 % HMNL
             end
         end
     end
-    
+
     if any(MissingInd == 1) % In case of some missing data
         R2 = mean(mean(probs,2).^(1./NCTMiss),1);
     else
         R2 = mean(mean(probs,2).^(1/NCT),1);
     end
-    
+
 elseif type == 1 % HLC
-    
+
     NClass = EstimOpt.NClass;
     NVarC = EstimOpt.NVarC;
-    
+
     beta = reshape(B(1:NClass*NVarA),[NVarA,NClass]);
     if EstimOpt.WTP_space > 0
         beta(1:end - EstimOpt.WTP_space,:) = beta(1:end - EstimOpt.WTP_space,:).*beta(EstimOpt.WTP_matrix,:);
@@ -143,10 +192,11 @@ elseif type == 1 % HLC
     parfor i = 1:NP
         Xc_i = Xc(i,:);
         XXc = [Xc_i(ones(NRep,1),:), LV(:,(i-1)*NRep+1:i*NRep)'];
-        PNClass = exp(XXc*bNClass); % NRep x NClass
+        PNClass = XXc*bNClass; % NRep x NClass
+        PNClass = exp(PNClass - max(PNClass,[],2));
         PNClass_sum = sum(PNClass,2);
         PNClass = PNClass./PNClass_sum; % NRep x NClass
-        p(i,:) = sum(PNClass.*probs(:,:,i),2)'; 
+        p(i,:) = sum(PNClass.*probs(:,:,i),2)';
 
     end
     if any(MissingInd == 1) % In case of some missing data
@@ -154,32 +204,32 @@ elseif type == 1 % HLC
     else
         R2 = mean(mean(p,2).^(1/NCT),1);
     end
-    
+
 elseif type == 2 % HMXL
-    
+
     if EstimOpt.FullCov == 0
-        ba = B(1:NVarA); % b atrybut體
+        ba = B(1:NVarA); % b atrybut贸w
         bv = B(NVarA+1:2*NVarA);
         VC = diag(bv);
         bm = reshape(B(2*NVarA+1:NVarA*(NVarM+2)),[NVarA,NVarM]); % b mean covariates
         bl = reshape(B((2+NVarM)*NVarA+1:NVarA*(NLatent+2+NVarM)),[NVarA,NLatent]); % b interakcji z LV
         bs = B(NVarA*(NLatent+NVarM+2)+1:NVarA*(NLatent+NVarM+2)+NVarS); % b scale
-        bstr = reshape(B(NVarA*(NLatent+2+NVarM)+NVarS+1:(NVarA+NVarStr)*NLatent+(2+NVarM)*NVarA+NVarS),[NVarStr,NLatent]); % b r體nania struktury
-        %bstr = reshape(B(EstimOpt.NVarA*(EstimOpt.NLatent+2+EstimOpt.NVarM)+1:(EstimOpt.NVarA+EstimOpt.NVarStr)*EstimOpt.NLatent+(2+EstimOpt.NVarM)*EstimOpt.NVarA), EstimOpt.NVarStr, EstimOpt.NLatent); % b r體nania struktury
+        bstr = reshape(B(NVarA*(NLatent+2+NVarM)+NVarS+1:(NVarA+NVarStr)*NLatent+(2+NVarM)*NVarA+NVarS),[NVarStr,NLatent]); % b r贸wnania struktury
+        %bstr = reshape(B(EstimOpt.NVarA*(EstimOpt.NLatent+2+EstimOpt.NVarM)+1:(EstimOpt.NVarA+EstimOpt.NVarStr)*EstimOpt.NLatent+(2+EstimOpt.NVarM)*EstimOpt.NVarA), EstimOpt.NVarStr, EstimOpt.NLatent); % b r贸wnania struktury
     else
-        ba = B(1:NVarA); % b atrybut體
+        ba = B(1:NVarA); % b atrybut贸w
         bv = B(NVarA+1:NVarA+sum(1:NVarA,2));
         VC = tril(ones(NVarA));
         VC(VC == 1) = bv;
         bm = reshape(B(NVarA+sum(1:NVarA,2)+1:NVarA*(NVarM+1)+sum(1:NVarA,2)),[NVarA,NVarM]); % b mean covariates
         bl = reshape(B(NVarA*(1+NVarM)+sum(1:NVarA,2)+1:NVarA*(NLatent+1+NVarM)+sum(1:NVarA,2)),[NVarA,NLatent]); % b interakcji z LV
         bs = B(NVarA*(NLatent+1+NVarM)+sum(1:NVarA,2)+1:NVarA*(NLatent+1+NVarM)+sum(1:NVarA,2)+NVarS); % b scale
-        bstr = reshape(B(NVarA*(NLatent+NVarM+1)+sum(1:NVarA,2)+NVarS+1:(NVarA+NVarStr)*NLatent+NVarA*(1+NVarM)+sum(1:NVarA,2)+NVarS),NVarStr,NLatent); % b r體nania struktury
-        %bstr = reshape(B(EstimOpt.NVarA*(EstimOpt.NLatent++EstimOpt.NVarM+1)+sum(1EstimOpt.NVarA,2)+1:(EstimOpt.NVarA+EstimOpt.NVarStr)*EstimOpt.NLatent+EstimOpt.NVarA*(1+EstimOpt.NVarM)+sum(1:EstimOpt.NVarA,2)), EstimOpt.NVarStr, EstimOpt.NLatent); % b r體nania struktury
+        bstr = reshape(B(NVarA*(NLatent+NVarM+1)+sum(1:NVarA,2)+NVarS+1:(NVarA+NVarStr)*NLatent+NVarA*(1+NVarM)+sum(1:NVarA,2)+NVarS),NVarStr,NLatent); % b r贸wnania struktury
+        %bstr = reshape(B(EstimOpt.NVarA*(EstimOpt.NLatent++EstimOpt.NVarM+1)+sum(1EstimOpt.NVarA,2)+1:(EstimOpt.NVarA+EstimOpt.NVarStr)*EstimOpt.NLatent+EstimOpt.NVarA*(1+EstimOpt.NVarM)+sum(1:EstimOpt.NVarA,2)), EstimOpt.NVarStr, EstimOpt.NLatent); % b r贸wnania struktury
     end
     if ScaleLV == 1
        bsLV = bs(NVarS-NLatent+1:end)';
-       bs = bs(1:NVarS-NLatent); 
+       bs = bs(1:NVarS-NLatent);
        NVarS = NVarS - NLatent;
     end
     LV_tmp = X_str*bstr; % NP x NLatent
@@ -198,7 +248,8 @@ elseif type == 2 % HMXL
     b_mtx = ba + bl*LV + VC*err_sliced(1:NVarA,:); % NVarA x NRep*NP
     if sum(EstimOpt.Dist==1) > 0 % Log - normal
         b_mtx(EstimOpt.Dist==1,:) = exp(b_mtx(EstimOpt.Dist == 1,:));
-    elseif sum(EstimOpt.Dist==2) > 0 % Spike       
+    end
+    if sum(EstimOpt.Dist==2) > 0 % Spike
         b_mtx(EstimOpt.Dist==2,:) = max(b_mtx(EstimOpt.Dist==2,:),0);
     end
 
@@ -207,7 +258,7 @@ elseif type == 2 % HMXL
     end
     if ScaleLV == 1
         ScaleLVX = exp(bsLV*LV);
-        b_mtx = ScaleLVX.*b_mtx; 
+        b_mtx = ScaleLVX.*b_mtx;
     end
     if NVarS > 0
        Scale = reshape(exp(Xs*bs),[NAlt*NCT,1,NP]);
@@ -215,7 +266,7 @@ elseif type == 2 % HMXL
     end
     probs = zeros(NP,NRep);
     b_mtx = reshape(b_mtx,[NVarA,NRep,NP]);
-    
+
     if any(isnan(Xa(:))) == 0 % faster version for complete dataset
 
         parfor n = 1:NP
@@ -236,7 +287,7 @@ elseif type == 2 % HMXL
             b_mtx_n = b_mtx(:,:,n);
             NAltMissIndExp_n = NAltMissIndExp(:,n);
             NAltMissIndExp_n = NAltMissIndExp_n(YnanInd);
-            if var(NAltMissIndExp_n(NAltMissIndExp_n > 0)) == 0 
+            if var(NAltMissIndExp_n(NAltMissIndExp_n > 0)) == 0
                 U = reshape(Xa_n(YnanInd,:)*b_mtx_n,[NAltMiss(n),NCTMiss(n),NRep]);
                 U = exp(U - max(U,[],1)); % NAlt x NCT - NaNs x NRep
                 U_sum = reshape(sum(U,1),[1,NCTMiss(n),NRep]);
@@ -259,7 +310,7 @@ elseif type == 2 % HMXL
             end
         end
     end
-    
+
     if any(MissingInd == 1) % In case of some missing data
         R2 = mean(mean(probs,2).^(1./NCTMiss),1);
     else

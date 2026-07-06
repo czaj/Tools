@@ -58,7 +58,7 @@ f0 = @(w) ...
 
 
 t0 = -1e6;
-f = @(x) quad(@(w) f0(w),t0,x) - cen;
+f = @(x) integral(@(w) f0(w),t0,x) - cen;
 options = optimset('display','off','TolFun',1e-12,'TolX',1e-12);
 Y = fsolve(f,m1/m2,options);
 

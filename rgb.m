@@ -28,7 +28,7 @@
 %
 %   ABOUT RGB
 %     This program is public domain and may be distributed freely.
-%     Author: Kristj·n JÛnasson, Dept. of Computer Science, University of
+%     Author: Kristj√°n J√≥nasson, Dept. of Computer Science, University of
 %     Iceland (jonasson@hi.is). June 2009.
 %
 %   REFERENCES

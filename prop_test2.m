@@ -33,9 +33,10 @@ uX2 = unique(X2);
 u = unique([uX1;uX2]);
 
 % Count number of successes
-nY1 = zeros(size(u)-1);
-nY2 = zeros(size(u)-1);
-for i = 1:size(u,1)-1
+k = size(u,1);
+nY1 = zeros(k,1);
+nY2 = zeros(k,1);
+for i = 1:k
     nY1(i) = sum(X1(:) == u(i));
     nY2(i) = sum(X2(:) == u(i));
 end

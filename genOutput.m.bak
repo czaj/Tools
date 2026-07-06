@@ -547,6 +547,7 @@ end
 rangeE = strcat('A1:',columnName,num2str(size(ResultsOut,1)));
 excelActivesheetRange = get(excel.Activesheet,'Range',rangeE);
 excelActivesheetRange.Value = ResultsOut;
+fullSaveName = strjoin(fullSaveName);
 if isfield(EstimOpt,'xlsOverwrite') && EstimOpt.xlsOverwrite == 0
     i = 1;
     while exist(fullSaveName,'file') == 2
@@ -607,8 +608,6 @@ catch ME
     end
 
     rethrow(ME)
-end
-
 end
 
 function fileBase = safeExcelFileBase(fileBase)

@@ -14,8 +14,8 @@ end
 switch state
     case 'init'
         disp('')
-        fprintf('%6s %6s %15s %15s %19s %15s %15s %10s   %19s  %s\n', ...
-            'Iter.','Eval.','max|dB|','Step','f(x)','df prev','Opt. Cond.','Iter sec','Date/time','Procedure');
+        fprintf('%6s %6s %15s %15s %19s %15s %19s %10s   %19s\n', ...
+            'Iter.','Eval.','max|dB|','Step','f(x)','df prev','Opt. Cond.','Iter sec','Date/time');
         LL_backup = NaN;
         B_backup = x;
         IterTime = tic;
@@ -32,7 +32,6 @@ switch state
         stepsize = get_optim_field(optimvalues,'stepsize',NaN);
         fval = get_optim_field(optimvalues,'fval',NaN);
         firstorderopt = get_optim_field(optimvalues,'firstorderopt',NaN);
-        procedure = get_optim_field(optimvalues,'procedure','');
         nowstr = char(datetime('now','Format','yyyy-MM-dd HH:mm:ss'));
 
         if iteration == 0 || isempty(B_backup) || any(size(B_backup) ~= size(x))
@@ -43,11 +42,8 @@ switch state
             df = LL_backup - fval;
         end
 
-        if ~(ischar(procedure) || isstring(procedure)) || isempty(procedure)
-            procedure = '-';
-        end
-        fprintf('%6d %6d %15.10f %15.10f %19.10f %15.10f %15.10f %10.4f   %19s  %s\n', ...
-            iteration,funccount,dB,stepsize,fval,df,firstorderopt,IterTocNote,nowstr,char(procedure));
+        fprintf('%6d %6d %15.10f %15.10f %19.10f %15.10f %19.10f %10.4f   %19s\n', ...
+            iteration,funccount,dB,stepsize,fval,df,firstorderopt,IterTocNote,nowstr);
 
         B_backup = x;
         LL_backup = fval;

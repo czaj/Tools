@@ -313,7 +313,7 @@ OptimOpt_0.Diagnostics = 'off';
 Results.MNL0 = MNL(INPUT_0,[],EstimOpt_0,OptimOpt_0);
 % Results.MNL0.LL = 1;
 
-save tmp1
+% save tmp1
 
 % % if exist('output','dir') == 0
 % % 	mkdir('output')

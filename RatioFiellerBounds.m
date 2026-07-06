@@ -12,7 +12,7 @@ function [a1,a2,a3,a4] = RatioFiellerBounds(B,VARB,varargin)
 if nargin > 3 % case 0-2
     
     m1 = B;
-    m2 = varb;
+    m2 = VARB;
     s1 = varargin{1};
     s2 = varargin{2};
     r = varargin{3};

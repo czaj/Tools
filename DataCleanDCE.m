@@ -242,6 +242,12 @@ end
 if isfield(EstimOpt,'Display') == 0
     EstimOpt.Display = 1;
 end
+if isfield(EstimOpt,'CheckSeparation') == 0 || isempty(EstimOpt.CheckSeparation)
+    EstimOpt.CheckSeparation = 1;
+end
+if isfield(EstimOpt,'SeparationMaxLevels') == 0 || isempty(EstimOpt.SeparationMaxLevels)
+    EstimOpt.SeparationMaxLevels = 20;
+end
 
 if isfield(EstimOpt,'NumGrad') == 0 || (EstimOpt.NumGrad ~= 0 && EstimOpt.NumGrad ~= 1)
     EstimOpt.NumGrad = 0; % 1 for numerical gradient, 0 for analytical
@@ -301,6 +307,11 @@ OptimOpt.FunValCheck = 'on';
 OptimOpt.Diagnostics = 'off';
 OptimOpt.MaxFunEvals = 1e5*size(INPUT.Xa,2); %Maximum number of function evaluations allowed (1000)
 OptimOpt.OutputFcn = @outputf;
+
+Results.SeparationDiagnostics = [];
+if EstimOpt.CheckSeparation ~= 0
+    Results.SeparationDiagnostics = checkDCESeparation(INPUT,EstimOpt);
+end
 
 
 %% Estimate constants-only MNL model:
