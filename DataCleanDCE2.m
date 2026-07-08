@@ -19,6 +19,8 @@ function [INPUT, Results, EstimOpt, OptimOpt] = DataCleanDCE2(INPUT,EstimOpt)
 % EstimOpt.NamesA = {'1','2','-Cost'};
 %% 
 
+EstimOpt = setupDceOutputDefaults(EstimOpt);
+
 inputnames = fieldnames(INPUT);
 for i=1:length(inputnames)
     INPUT.(inputnames{(i)}) = double(INPUT.(inputnames{(i)}));

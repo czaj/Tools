@@ -430,76 +430,30 @@ ResultsOut = [ResultsOut; TailOut];
 
 % excel
 
-fullOrgTemplate = which('template.xls');
-currFld = pwd;
-
-if isfield(EstimOpt,'ProjectName')
-    fullSaveName = strcat(currFld,'\', Head(1,1), '_results_',EstimOpt.ProjectName,'.xls');
+if isfield(EstimOpt,'OutputDir') && ~isempty(EstimOpt.OutputDir)
+    saveDir = EstimOpt.OutputDir;
 else
-    fullSaveName = strcat(currFld,'\', Head(1,1), '_results.xls');
+    saveDir = pwd;
+end
+if ~exist(saveDir,'dir')
+    mkdir(saveDir);
 end
 
-copyfile(fullOrgTemplate,'templateTMP.xls')
-fullTMPTemplate = which('templateTMP.xls');
-try
-    ex = actxGetRunningServer('Excel.Application');
-catch
+if isfield(EstimOpt,'OutputFilePrefix') && ~isempty(EstimOpt.OutputFilePrefix)
+    fileBase = char(string(EstimOpt.OutputFilePrefix));
+elseif isfield(EstimOpt,'ProjectName') && ~isempty(EstimOpt.ProjectName)
+    fileBase = [char(string(Head{1,1})) '_results_' char(string(EstimOpt.ProjectName))];
+else
+    fileBase = [char(string(Head{1,1})) '_results'];
 end
-
-excel = actxserver('Excel.Application');
-excelWorkbook = excel.Workbooks.Open(fullTMPTemplate);
-excel.Visible = 1;
-excel.DisplayAlerts = 0;
-excelSheets = excel.ActiveWorkbook.Sheets;
-excelSheet1 = excelSheets.get('Item',1);
-excelSheet1.Activate;
-column = size(ResultsOut,2);
-columnName = [];
-while column > 0
-    modulo = mod(column - 1,26);
-    columnName = [char(65 + modulo) , columnName]; %#ok<AGROW>
-    column = floor(((column - modulo) / 26));
+fileBase = regexprep(fileBase,'[\r\n\t]+',' ');
+fileBase = regexprep(fileBase,'[<>:"/\\|?*]+',' - ');
+fileBase = regexprep(fileBase,'\s+',' ');
+fileBase = regexprep(strtrim(fileBase),'[\. ]+$','');
+if isempty(fileBase)
+    fileBase = 'results';
+elseif length(fileBase) > 150
+    fileBase = regexprep(strtrim(fileBase(1:150)),'[\. ]+$','');
 end
-rangeE = strcat('A1:',columnName,num2str(size(ResultsOut,1)));
-excelActivesheetRange = get(excel.Activesheet,'Range',rangeE);
-excelActivesheetRange.Value = ResultsOut;
-fullSaveName = strjoin(fullSaveName);
-if isfield(EstimOpt,'xlsOverwrite') && EstimOpt.xlsOverwrite == 0
-    i = 1;
-    while exist(fullSaveName,'file') == 2
-        if ~contains(fullSaveName, '(')
-            pos = strfind(fullSaveName, '.xls');
-            fullSaveName = strcat(fullSaveName(1:pos-1),'(',num2str(i),').xls');
-        else
-            pos = strfind(fullSaveName, '(');
-            fullSaveName = strcat(fullSaveName(1:pos),num2str(i),').xls');
-        end
-        i = i+1;
-    end
-elseif isfield(EstimOpt,'xlsOverwrite') && EstimOpt.xlsOverwrite == 1
-    if exist('ex','var')
-        wbs = ex.Workbooks;
-        for j = 1:wbs.Count
-            if strcmp(wbs.Item(j).FullName,fullSaveName)
-                if ~contains(fullSaveName, '(')
-                    pos = strfind(fullSaveName, '.xls');
-                    fullSaveName = strcat(fullSaveName(1:pos-1),'(',num2str(1),').xls');
-                else
-                    pos = strfind(fullSaveName, '(');
-                    pos2 = strfind(fullSaveName, ')');
-                    num = str2double(fullSaveName(pos+1:pos2-1)) + 1;
-                    fullSaveName = strcat(fullSaveName(1:pos),num2str(num),').xls');
-                end
-            end
-        end
-    end
+writeResultsXlsx(EstimOpt,Results,ResultsOut,fileBase,saveDir);
 end
-
-excelWorkbook.ConflictResolution = 2;
-SaveAs(excelWorkbook,fullSaveName);
-excel.DisplayAlerts = 0;
-excelWorkbook.Saved = 1;
-Close(excelWorkbook)
-Quit(excel)
-delete(excel)
-delete(fullTMPTemplate)

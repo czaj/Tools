@@ -1,5 +1,7 @@
 function [INPUT, Results, EstimOpt, OptimOpt] = DataCleanDCE_MDCEV(INPUT,EstimOpt)
 
+EstimOpt = setupDceOutputDefaults(EstimOpt);
+
 if nansum(INPUT.Y<0)
     cprintf(rgb('DarkOrange'),'WARNING: There are negatives values in INPUT.Y. At the moment DataCleanDCE_MDCEV is not customized for such event. Try to check and adjust data manually.\n')
 end

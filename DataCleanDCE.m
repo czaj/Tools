@@ -4,6 +4,8 @@ function [INPUT, Results, EstimOpt, OptimOpt] = DataCleanDCE(INPUT,EstimOpt)
 % save tmp_DataCleanDCE
 % return
 
+EstimOpt = setupDceOutputDefaults(EstimOpt);
+
 inputnames = fieldnames(INPUT);
 for i=1:length(inputnames)
     INPUT.(inputnames{(i)}) = double(INPUT.(inputnames{(i)}));
@@ -244,6 +246,12 @@ if isfield(EstimOpt,'Display') == 0
 end
 if isfield(EstimOpt,'CheckSeparation') == 0 || isempty(EstimOpt.CheckSeparation)
     EstimOpt.CheckSeparation = 1;
+end
+if isfield(EstimOpt,'CheckLinearSeparation') == 0 || isempty(EstimOpt.CheckLinearSeparation)
+    EstimOpt.CheckLinearSeparation = 1;
+end
+if isfield(EstimOpt,'SeparationTol') == 0 || isempty(EstimOpt.SeparationTol)
+    EstimOpt.SeparationTol = 1e-8;
 end
 if isfield(EstimOpt,'SeparationMaxLevels') == 0 || isempty(EstimOpt.SeparationMaxLevels)
     EstimOpt.SeparationMaxLevels = 20;

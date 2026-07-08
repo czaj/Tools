@@ -6,17 +6,27 @@ D = struct('Messages',{{}},'NMessages',0);
 maxLevels = optNumber(EstimOpt,'SeparationMaxLevels',20);
 maxPrint = optNumber(EstimOpt,'SeparationMaxWarnings',40);
 showOutput = optNumber(EstimOpt,'Display',1) ~= 0;
+checkLinear = optNumber(EstimOpt,'CheckLinearSeparation',1) ~= 0;
+tol = optNumber(EstimOpt,'SeparationTol',1e-8);
+hasLinprog = exist('linprog','file') == 2;
+if checkLinear && ~hasLinprog
+    D = addIssue(D,'Linear separation LP test skipped because linprog is not available.');
+end
 
 Y = INPUT.Y(:);
 validChoice = isfinite(Y);
 if isfield(INPUT,'MissingInd') && ~isempty(INPUT.MissingInd)
     validChoice = validChoice & INPUT.MissingInd(:) == 0;
 end
+utilityX = [];
+utilityNames = {};
 
 if isfield(INPUT,'Xa') && ~isempty(INPUT.Xa)
     namesA = optNames(EstimOpt,'NamesA',size(INPUT.Xa,2),'Xa');
     D = matrixChecks(D,'Xa',INPUT.Xa,namesA,validChoice,false);
     D = separationChecks(D,'choice Y','Xa',Y,INPUT.Xa,namesA,validChoice,maxLevels);
+    utilityX = INPUT.Xa;
+    utilityNames = namesA;
 end
 
 if isfield(INPUT,'Xs') && ~isempty(INPUT.Xs)
@@ -34,7 +44,12 @@ if isfield(INPUT,'Xm') && ~isempty(INPUT.Xm)
         [Xam,namesAM] = interactionMatrix(INPUT.Xa,INPUT.Xm,namesA,namesM);
         D = matrixChecks(D,'Xa.*Xm',Xam,namesAM,v,false);
         D = separationChecks(D,'choice Y','Xa.*Xm',Y,Xam,namesAM,v,maxLevels);
+        utilityX = [utilityX,Xam];
+        utilityNames = [utilityNames;namesAM];
     end
+end
+if checkLinear && hasLinprog && ~isempty(utilityX)
+    D = choiceLinearSeparation(D,Y,utilityX,utilityNames,validChoice,EstimOpt,tol);
 end
 
 [Xmea,missingMea] = respondentMatrix(getField(INPUT,'Xmea'),EstimOpt,getField(EstimOpt,'MissingIndMea'));
@@ -64,9 +79,15 @@ if ~isempty(Xmea)
         end
         if ~isempty(XmeaExp)
             D = separationChecks(D,['measurement ' namesMea{i}],'Xmea_exp',y,XmeaExp,namesMeaExp,v,maxLevels);
+            if checkLinear && hasLinprog
+                D = outcomeLinearSeparation(D,['measurement ' namesMea{i}],'Xmea_exp',y,XmeaExp,namesMeaExp,v,maxLevels,tol);
+            end
         end
         if ~isempty(Xstr)
             D = separationChecks(D,['measurement ' namesMea{i}],'Xstr',y,Xstr,namesStr,v,maxLevels);
+            if checkLinear && hasLinprog
+                D = outcomeLinearSeparation(D,['measurement ' namesMea{i}],'Xstr',y,Xstr,namesStr,v,maxLevels,tol);
+            end
         end
     end
 end
@@ -80,6 +101,133 @@ if showOutput && D.NMessages > 0
     if D.NMessages > maxPrint
         warnLine(sprintf('%d more issue(s) not printed; see Results.SeparationDiagnostics.Messages.',D.NMessages-maxPrint));
     end
+end
+end
+
+function D = choiceLinearSeparation(D,y,X,names,valid,EstimOpt,tol)
+if size(X,1) ~= numel(y)
+    return
+end
+NAlt = EstimOpt.NAlt;
+NTask = EstimOpt.NCT*EstimOpt.NP;
+if numel(y) ~= NAlt*NTask
+    return
+end
+p = size(X,2);
+Y3 = reshape(y,NAlt,NTask);
+V3 = reshape(valid,NAlt,NTask);
+X3 = reshape(X,NAlt,NTask,p);
+A = zeros(0,p);
+alts = (1:NAlt)';
+for t = 1:NTask
+    avail = V3(:,t) & isfinite(Y3(:,t));
+    chosen = avail & Y3(:,t) == 1;
+    if sum(chosen) ~= 1 || sum(avail) < 2
+        continue
+    end
+    chosenAlt = find(chosen);
+    otherAlts = alts(avail & alts ~= chosenAlt);
+    xChosen = reshape(X3(chosenAlt,t,:),1,p);
+    xOther = reshape(X3(otherAlts,t,:),numel(otherAlts),p);
+    A = [A; xChosen(ones(numel(otherAlts),1),:) - xOther]; %#ok<AGROW>
+end
+D = lpSeparation(D,'choice utility',A,names,tol);
+end
+
+function D = outcomeLinearSeparation(D,outcomeName,block,y,X,names,valid,maxLevels,tol)
+if isempty(X) || size(X,1) ~= numel(y)
+    return
+end
+valid = validRowsFor(X,valid) & isfinite(y(:));
+y = y(:);
+Xv = X(valid,:);
+yv = y(valid);
+uy = unique(yv);
+if numel(uy) < 2 || numel(uy) > maxLevels
+    return
+end
+Xv = [ones(size(Xv,1),1),Xv];
+names = [{'constant'};names(:)];
+for k = 1:numel(uy)-1
+    z = yv > uy(k);
+    if all(z) || ~any(z)
+        continue
+    end
+    s = 2*double(z) - 1;
+    A = Xv.*s(:,ones(1,size(Xv,2)));
+    label = sprintf('%s, threshold %s',outcomeName,valueLabel(uy(k)));
+    D = lpSeparation(D,[block ' -> ' label],A,names,tol);
+end
+end
+
+function D = lpSeparation(D,label,A,names,tol)
+A = A(all(isfinite(A),2),:);
+keep = any(abs(A) > tol,1);
+A = A(:,keep);
+names = names(keep);
+if isempty(A) || size(A,1) == 0 || size(A,2) == 0
+    return
+end
+[ok,margin,beta] = completeLP(A,tol);
+if ok
+    D = addIssue(D,sprintf('Complete linear separation in %s (margin %.3g). Direction: %s.',label,margin,betaLabel(beta,names,tol)));
+    return
+end
+[ok,gain,beta] = quasiLP(A,tol);
+if ok
+    D = addIssue(D,sprintf('Quasi linear separation in %s (gain %.3g). Direction: %s.',label,gain,betaLabel(beta,names,tol)));
+end
+end
+
+function [ok,margin,beta] = completeLP(A,tol)
+p = size(A,2);
+f = [zeros(p,1);-1];
+Aineq = [-A,ones(size(A,1),1)];
+bineq = zeros(size(A,1),1);
+lb = [-ones(p,1);-1];
+ub = [ones(p,1);1];
+[x,~,exitflag] = linprog(f,Aineq,bineq,[],[],lb,ub,linprogOptions());
+ok = exitflag > 0 && x(end) > tol;
+margin = NaN;
+beta = zeros(p,1);
+if exitflag > 0
+    beta = x(1:p);
+    margin = x(end);
+end
+end
+
+function [ok,gain,beta] = quasiLP(A,tol)
+p = size(A,2);
+f = -sum(A,1)';
+Aineq = -A;
+bineq = zeros(size(A,1),1);
+lb = -ones(p,1);
+ub = ones(p,1);
+[beta,fval,exitflag] = linprog(f,Aineq,bineq,[],[],lb,ub,linprogOptions());
+gain = -fval;
+ok = exitflag > 0 && gain > tol;
+if exitflag <= 0
+    beta = zeros(p,1);
+    gain = NaN;
+end
+end
+
+function opts = linprogOptions()
+opts = optimoptions('linprog','Display','none');
+end
+
+function s = betaLabel(beta,names,tol)
+[~,idx] = sort(abs(beta),'descend');
+idx = idx(abs(beta(idx)) > tol);
+idx = idx(1:min(5,numel(idx)));
+parts = cell(numel(idx),1);
+for i = 1:numel(idx)
+    parts{i} = sprintf('%s=%+.3g',names{idx(i)},beta(idx(i)));
+end
+if isempty(parts)
+    s = 'n/a';
+else
+    s = strjoin(parts,', ');
 end
 end
 
@@ -157,16 +305,18 @@ if isempty(Xin)
     return
 end
 rowPerP = EstimOpt.NAlt*EstimOpt.NCT;
+usedLong = false;
 if size(Xin,1) == EstimOpt.NP
     X = Xin;
 elseif size(Xin,1) == rowPerP*EstimOpt.NP
     idx = (1:rowPerP:size(Xin,1))';
     X = Xin(idx,:);
+    usedLong = true;
 else
     X = Xin;
 end
 if ~isempty(missingIn)
-    if size(missingIn,1) == size(Xin,1) && size(Xin,1) == rowPerP*EstimOpt.NP
+    if usedLong && size(missingIn,1) == size(Xin,1)
         missing = missingIn(idx,:);
     elseif size(missingIn,1) == size(X,1)
         missing = missingIn;
