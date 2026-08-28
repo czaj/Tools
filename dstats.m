@@ -16,7 +16,7 @@ input = double(input);
 
 for k = 1 : size(input,2)
     desctiptive_stats(1:10,k*2-1) = {'mean';'median';'std';'min';'max';'quantile 0.025';'quantile 0.975'; 'sum NaN'; 'sum Inf'; 'cases'};
-    desctiptive_stats(1:10,k*2) = num2cell([nanmean(input(:,k));nanmedian(input(:,k));nanstd(input(:,k));min(input(:,k));max(input(:,k));quantile(input(:,k),0.025);quantile(input(:,k),0.975);sum(isnan(input(:,k)));sum(input(:,k) == -Inf  | input(:,k) == Inf);size(input(:,k),1)]);
+    desctiptive_stats(1:10,k*2) = num2cell([nanmean(input(:,k));nanmedian(input(:,k));nanstd(input(:,k));min(input(:,k));max(input(:,k));quantile(input(:,k),0.025);quantile(input(:,k),0.975);sum(isnan(input(:,k)));sum(input(:,k) == -Inf  | input(:,k) == Inf);size(input(:,k),1)] + 0); % +0 normalises -0 so it does not print as -0.0000
     if mode == 1
         desctiptive_stats(11,k*2-1:k*2) = {'levels', 'shares'};
         levels = [unique(input(~isnan(input(:,k)),k)); NaN];
