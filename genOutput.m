@@ -127,9 +127,25 @@ for i = 1:Dim1
         else
             fixed = 0;
         end
+        % EstimOpt.NoSigRows.<BlockName> lists rows whose null hypothesis is not the
+        % one a significance star suggests (e.g. ln(alpha) = 0 is not the Poisson
+        % boundary). Inf blanks the whole block, which also drops the column headers.
+        noSig = [];
+        if isfield(EstimOpt,'NoSigRows') && isfield(EstimOpt.NoSigRows,Template1{i+1,1})
+            noSig = EstimOpt.NoSigRows.(Template1{i+1,1});
+        end
+        noSigAll = any(isinf(noSig));
+        if noSigAll
+            noSig = 1:size(Block,1);
+        end
+
         RowOut = num2cell(Block);
         for s=1:size(Block,2)/4
             RowOut(:,4*s-2) = star_sig_cell(Block(:,s*4));
+            if ~isempty(noSig)
+                RowOut(noSig,4*s-2) = cellstr('');
+                RowOut(noSig,4*s) = cellstr('');
+            end
         end
         RowOut = [Names.(Template1{i+1,1}), distType(Results.Dist, fixed, size(Block,1), Type), RowOut]; %it will crash if size of the block and number of variables will differ
         if fixed == 0
@@ -144,6 +160,9 @@ for i = 1:Dim1
             else
                 headn1 = head3;
             end
+        end
+        if noSigAll % nothing in the block is tested - drop the sign./p-value headers
+            headn1(strcmp(headn1,'sign.') | strcmp(headn1,'p-value')) = {''};
         end
                 
         RowOut = [headn1;RowOut];
@@ -344,7 +363,9 @@ end
         fprintf('%-29s%*.*f\n', 'LL at convergence:',CWm(1)+spacing+precision+1,precision, Results.stats(1))
         fprintf('%-29s%*.*f\n', 'LL at constant(s) only:',CWm(1)+spacing+precision+1,precision, Results.stats(2))
         fprintf('%-29s%*.*f\n', strcat('McFadden''s pseudo-R',char(178),':'),CWm(1)+spacing+precision+1,precision, Results.stats(3))
-        fprintf('%-29s%*.*f\n', strcat('Ben-Akiva-Lerman''s pseudo-R',char(178),':'),CWm(1)+spacing+precision+1,precision, Results.stats(4))
+        if ~isnan(Results.stats(4)) % not defined for every model (e.g. count data)
+            fprintf('%-29s%*.*f\n', strcat('Ben-Akiva-Lerman''s pseudo-R',char(178),':'),CWm(1)+spacing+precision+1,precision, Results.stats(4))
+        end
         fprintf('%-29s%*.*f\n','AIC/n:',CWm(1)+spacing+precision+1,precision, Results.stats(5))
         fprintf('%-29s%*.*f\n','BIC/n:',CWm(1)+spacing+precision+1,precision, Results.stats(6))
         fprintf('%-29s%*.*f\n','n (observations):',CWm(1)+spacing,0, Results.stats(7))
@@ -353,9 +374,31 @@ end
     end
     disp(' ')
     for i = 13:size(Tail,1)
-        fprintf('%-23s%-s\n', Tail{i,1}, Tail{i,2})
+        % A Tail wider than two columns carries a table (e.g. descriptive
+        % statistics); rows that only fill the first two keep the label/value form.
+        if size(Tail,2) > 2 && any(~cellfun(@isempty,Tail(i,3:end)))
+            label = Tail{i,1};
+            if isempty(label)
+                label = '';
+            end
+            line = [char(label),blanks(max(0,23-length(char(label))))];
+            for c = 2:size(Tail,2)
+                value = Tail{i,c};
+                if isempty(value)
+                    txt = '';
+                elseif isnumeric(value)
+                    txt = sprintf('%.*f',precision,value);
+                else
+                    txt = char(value);
+                end
+                line = [line,blanks(max(1,12+precision-length(txt))),txt]; %#ok<AGROW>
+            end
+            fprintf('%s\n',line)
+        else
+            fprintf('%-23s%-s\n', Tail{i,1}, Tail{i,2})
+        end
     end
-    
+
     disp(' ')
 
 end
@@ -364,11 +407,15 @@ end
 % Adding head and tail
 
 Indx = size(ResultsOut,2);
+if size(Tail,2) > Indx % a wide Tail (e.g. descriptive statistics) needs more columns
+    ResultsOut = [ResultsOut, cell(size(ResultsOut,1),size(Tail,2)-Indx)];
+    Indx = size(Tail,2);
+end
 HeadOut = cell(size(Head,1), Indx);
 HeadOut(:,1:2) = Head;
 ResultsOut = [HeadOut; ResultsOut];
 TailOut = cell(size(Tail,1), Indx);
-TailOut(:,1:2) = Tail;
+TailOut(:,1:size(Tail,2)) = Tail;
 ResultsOut = [ResultsOut; TailOut];
 
 % Adding statistics if available
