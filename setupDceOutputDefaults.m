@@ -110,7 +110,7 @@ function sourceScript = inferSourceScript()
 sourceScript = '';
 stack = dbstack('-completenames');
 skipFiles = {'setupDceOutputDefaults.m','DataCleanDCE.m','DataCleanDCE2.m', ...
-    'DataCleanDCE_MDCEV.m','writeResultsXlsx.m','genOutput.m','genOutput_LCMXL.m'};
+    'DataCleanDCE_MDCEV.m','DataCleanCDM.m','CDM.m','CDM_hurdle.m','CDM_post.m','writeResultsXlsx.m','genOutput.m','genOutput_LCMXL.m'};
 for i = numel(stack):-1:1
     filePath = stack(i).file;
     if isempty(filePath) || exist(filePath,'file') ~= 2
