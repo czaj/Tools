@@ -1,4 +1,4 @@
-function ResultsOut = genOutput(EstimOpt,Results,Head,Tail,Names,Template1,Template2,Heads,ST,Type,Statistics)
+function [ResultsOut,fullSaveName] = genOutput(EstimOpt,Results,Head,Tail,Names,Template1,Template2,Heads,ST,Type,Statistics)
 
 if nargin < 10
     Type = 0;
@@ -540,10 +540,16 @@ end
 if EstimOpt.Display ~= 0
         disp(' ')
         clocknote = clock;
-        tocnote = toc;
+        if isfield(Results,'EstimationSeconds')
+            tocnote = Results.EstimationSeconds;
+        else
+            tocnote = toc;
+        end
         [~,DayName] = weekday(now,'long');
-        disp(['Estimation completed on ' DayName ', ' num2str(clocknote(1)) '-' sprintf('%02.0f',clocknote(2)) '-' sprintf('%02.0f',clocknote(3)) ' at ' sprintf('%02.0f',clocknote(4)) ':' sprintf('%02.0f',clocknote(5)) ':' sprintf('%02.0f',clocknote(6))])
-        disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
+        if isfinite(tocnote)
+            disp(['Estimation completed on ' DayName ', ' num2str(clocknote(1)) '-' sprintf('%02.0f',clocknote(2)) '-' sprintf('%02.0f',clocknote(3)) ' at ' sprintf('%02.0f',clocknote(4)) ':' sprintf('%02.0f',clocknote(5)) ':' sprintf('%02.0f',clocknote(6))])
+            disp(['Estimation took ' num2str(tocnote) ' seconds ('  num2str(floor(tocnote/(60*60))) ' hours ' num2str(floor(rem(tocnote,60*60)/60)) ' minutes ' num2str(rem(tocnote,60)) ' seconds).']);
+        end
 end 
 
 % excel
@@ -570,7 +576,7 @@ else
 end
 
 fileBase = safeExcelFileBase(fileBase);
-writeResultsXlsx(EstimOpt,Results,ResultsOut,fileBase,saveDir);
+fullSaveName = writeResultsXlsx(EstimOpt,Results,ResultsOut,fileBase,saveDir);
 
 end
 
