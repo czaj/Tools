@@ -45,7 +45,7 @@ try
     delete(excel)
 catch ME
     warning('writeResultsXlsx:ExcelExportFailed', ...
-        'Excel export failed: %s', getReport(ME,'extended','hyperlinks','off'));
+        'Excel export failed (writing an unformatted .xlsx instead): %s', getReport(ME,'extended','hyperlinks','off'));
 
     try
         if exist('excelWorkbook','var')
@@ -62,7 +62,15 @@ catch ME
     catch
     end
 
-    rethrow(ME)
+    % The estimation results do not depend on this file: without Excel (other
+    % platforms, Excel not installed, or busy with several MATLAB sessions) write
+    % the results table as an unformatted .xlsx and continue.
+    try
+        writecell(ResultsOut,fullSaveName,'Sheet','Results','UseExcel',false);
+    catch ME2
+        warning('writeResultsXlsx:FallbackFailed', ...
+            'Unformatted .xlsx export failed too: %s', ME2.message);
+    end
 end
 end
 

@@ -113,24 +113,23 @@ NTask = EstimOpt.NCT*EstimOpt.NP;
 if numel(y) ~= NAlt*NTask
     return
 end
-p = size(X,2);
+% rows of A: x(chosen) - x(other available alternative), for every choice task
+% with exactly one chosen and at least two available alternatives. Built
+% without growing A in a loop (quadratic time for large data); the order of
+% the rows does not matter for the linear programs.
 Y3 = reshape(y,NAlt,NTask);
 V3 = reshape(valid,NAlt,NTask);
-X3 = reshape(X,NAlt,NTask,p);
-A = zeros(0,p);
-alts = (1:NAlt)';
-for t = 1:NTask
-    avail = V3(:,t) & isfinite(Y3(:,t));
-    chosen = avail & Y3(:,t) == 1;
-    if sum(chosen) ~= 1 || sum(avail) < 2
-        continue
-    end
-    chosenAlt = find(chosen);
-    otherAlts = alts(avail & alts ~= chosenAlt);
-    xChosen = reshape(X3(chosenAlt,t,:),1,p);
-    xOther = reshape(X3(otherAlts,t,:),numel(otherAlts),p);
-    A = [A; xChosen(ones(numel(otherAlts),1),:) - xOther]; %#ok<AGROW>
+avail = V3 & isfinite(Y3);
+chosen = avail & Y3 == 1;
+use = find(sum(chosen,1) == 1 & sum(avail,1) >= 2)';
+[chosenAlt,~] = find(chosen(:,use)); % one chosen alternative per task, in task order
+rowChosen = (use-1)*NAlt + chosenAlt;
+parts = cell(NAlt,1);
+for a = 1:NAlt
+    k = avail(a,use)' & chosenAlt ~= a;
+    parts{a} = X(rowChosen(k),:) - X((use(k)-1)*NAlt + a,:);
 end
+A = vertcat(parts{:});
 D = lpSeparation(D,'choice utility',A,names,tol);
 end
 
