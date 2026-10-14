@@ -235,8 +235,13 @@ if isfield(EstimOpt,'NRep') == 0
     EstimOpt.NRep = 1e3; % specify no. of draws
 end
 
-EstimOpt.Seed1 = 179424673;
-EstimOpt.Seed2 = 7521436817;
+% Default seeds; user-provided seeds are kept.
+if isfield(EstimOpt,'Seed1') == 0 || isempty(EstimOpt.Seed1)
+    EstimOpt.Seed1 = 179424673;
+end
+if isfield(EstimOpt,'Seed2') == 0 || isempty(EstimOpt.Seed2)
+    EstimOpt.Seed2 = 7521436817;
+end
 
 if isfield(EstimOpt,'ConstVarActive') == 0
     EstimOpt.ConstVarActive = 0;
@@ -261,8 +266,8 @@ if isfield(EstimOpt,'NumGrad') == 0 || (EstimOpt.NumGrad ~= 0 && EstimOpt.NumGra
     EstimOpt.NumGrad = 0; % 1 for numerical gradient, 0 for analytical
 end
 
-if isfield(EstimOpt,'HessEstFix') == 0 || ~ismember(EstimOpt.HessEstFix,0:4)
-    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = BHHH, 2 = high-precision BHHH, 3 = numerical Hessian, 4 = analytical Hessian
+if isfield(EstimOpt,'HessEstFix') == 0 || ~ismember(EstimOpt.HessEstFix,0:5)
+    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = BHHH, 2 = high-precision BHHH, 3 = numerical Hessian, 4 = analytical Hessian, 5 = central differences of the analytical gradient (MNL, MXL)
 end
 
 if isfield(EstimOpt,'ApproxHess') == 0 || (EstimOpt.ApproxHess ~= 0 && EstimOpt.ApproxHess ~= 1)
@@ -276,7 +281,9 @@ end
 if ~ismember(EstimOpt.Draws,1:6)
     EstimOpt.Draws = 6; % 1 - pseudo-random, 2 - Latin Hypercube, 3 - Halton, 4 - Halton RR scrambled, 5 - Sobol, 6 - Sobol MAO scrambled
 end
-EstimOpt.NSdSim = 1e4; % number of draws for simulating standard deviations
+if isfield(EstimOpt,'NSdSim') == 0 || isempty(EstimOpt.NSdSim)
+    EstimOpt.NSdSim = 1e4; % number of draws for simulating standard deviations
+end
 
 
 %% OptimOpt
