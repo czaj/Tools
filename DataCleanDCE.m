@@ -267,7 +267,7 @@ if isfield(EstimOpt,'NumGrad') == 0 || (EstimOpt.NumGrad ~= 0 && EstimOpt.NumGra
 end
 
 if isfield(EstimOpt,'HessEstFix') == 0 || ~ismember(EstimOpt.HessEstFix,0:5)
-    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = BHHH, 2 = high-precision BHHH, 3 = numerical Hessian, 4 = analytical Hessian, 5 = central differences of the analytical gradient (MNL, MXL)
+    EstimOpt.HessEstFix = 0; % 0 = use optimization Hessian, 1 = BHHH, 2 = high-precision BHHH, 3 = numerical Hessian, 4 = analytical Hessian, 5 = central differences of the analytical gradient (MNL, MXL, HMNL, HMXL, MIMIC)
 end
 
 if isfield(EstimOpt,'ApproxHess') == 0 || (EstimOpt.ApproxHess ~= 0 && EstimOpt.ApproxHess ~= 1)
