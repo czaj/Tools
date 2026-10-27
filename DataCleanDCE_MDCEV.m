@@ -182,23 +182,10 @@ end
 
 EstimOpt.NVarA = size(INPUT.Xa,2); % Number of attributes
 
-if isfield(EstimOpt,'HaltonSkip') == 0
-    EstimOpt.HaltonSkip = 1; % specify no of rows in halton sequence to skip (default=1)
-end
-if isfield(EstimOpt,'HaltonLeap') == 0
-    EstimOpt.HaltonLeap = 0; % specify no of rows in halton sequence to leap (default=0)
-end
+EstimOpt = dceSimulationDefaults(EstimOpt);
 
-if isfield(EstimOpt,'Draws') == 0
-    EstimOpt.Draws = 6; % specify draws type (default = Sobol with scrambling)
-end
-
-if isfield(EstimOpt,'NRep') == 0
-    EstimOpt.NRep = 1e3; % specify no. of draws
-end
-
-EstimOpt.Seed1 = 179424673;
-EstimOpt.Seed2 = 7521436817;
+if ~isfield(EstimOpt,'Seed1') || isempty(EstimOpt.Seed1),EstimOpt.Seed1 = 179424673;end
+if ~isfield(EstimOpt,'Seed2') || isempty(EstimOpt.Seed2),EstimOpt.Seed2 = 7521436817;end
 
 if isfield(EstimOpt,'ConstVarActive') == 0
     EstimOpt.ConstVarActive = 0;
