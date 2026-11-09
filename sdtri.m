@@ -7,6 +7,11 @@ if m1 ~= m2 || m1 ~= m3 || m2 ~= m3
     error('Dimentions of B, and VARB must agree.');
 end
 
+% Parameters with zero variance stay at B1, so factorise only the others;
+% a dense factorisation at full size would take hours with a large fixed block.
+act = diag(VARB1) ~= 0;
+VARB1 = full(VARB1(act,act));
+
 [~,err] = cholcov(VARB1);
 if err > 0
     cprintf(rgb('DarkOrange'), 'WARNING: Approximation of the variance-covariance matrix is not positive semi-definite. \n')
@@ -21,7 +26,10 @@ m0 = (sqrt(8*m1 + 1) - 1)/2;
 
 D = zeros(EstimOpt.NSdSim,m0);
 
-PRM = mvnrnd(B1,VARB1,EstimOpt.NSdSim);
+PRM = repmat(B1(:)',EstimOpt.NSdSim,1);
+if any(act)
+    PRM(:,act) = mvnrnd(reshape(B1(act),1,[]),VARB1,EstimOpt.NSdSim);
+end
 if isfield(EstimOpt,'BActive') == 1 && sum(EstimOpt.BActive(EstimOpt.NVarA+1:end)) > 0
     PRM(:,EstimOpt.BActive(EstimOpt.NVarA+1:EstimOpt.NVarA+sum(1:EstimOpt.NVarA))'==0) = B1(EstimOpt.BActive(EstimOpt.NVarA+1:EstimOpt.NVarA+sum(1:EstimOpt.NVarA))==0,ones(EstimOpt.NSdSim,1))';
 end
