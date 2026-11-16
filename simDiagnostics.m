@@ -41,6 +41,12 @@ function [D,TailRows] = simDiagnostics(ess,NRep,rot,label,Thresholds)
 % achieves. A high count is therefore reassuring, while a low one means the
 % weights are concentrated, not necessarily that the integration error is as
 % large as 1/sqrt(ess) suggests.
+%
+% It measures how hard the simulator is working; it is not a target to
+% optimise. It does bound what a better simulator could gain - no importance
+% sampler can be worth more than R/ess, since a proposal proportional to the
+% integrand would be worth R - but a proposal that raises the count need not
+% raise the accuracy by as much, or at all. DRAWS.md has the measurements.
 
 if nargin < 4 || isempty(label)
     label = 'Simulator';
