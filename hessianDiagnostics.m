@@ -99,13 +99,18 @@ try
         D.MinEigHessian = min(real(eig(Hs)));
     end
 
-    se = seFromCov(iH,active,n);
+    if isfinite(D.MinEigHessian) && D.MinEigHessian > 0 && rcond(Hs) > eps
+        se = seFromCov(iH,active,n);
+    else
+        se = NaN(n,1);
+        D.Note = 'Free curvature is indefinite, singular or nonfinite; inference unavailable';
+    end
     D.NNonFiniteSE = sum(~isfinite(se) | se <= 0);
 
     if ~isempty(g)
         gv = restrictVector(g(:),active,n);
         D.MaxAbsGradient = max(abs(gv));
-        if numel(gv) == n
+        if numel(gv) == n && all(isfinite(se))
             step = quietSolve(Hs,gv);
             if ~isempty(step)
                 stepSE = abs(step)./se;
@@ -116,7 +121,7 @@ try
         end
     end
 
-    if ~isempty(J)
+    if ~isempty(J) && any(isfinite(se))
         Jm = J;
         if size(Jm,2) == numel(active) && sum(active) ~= numel(active)
             Jm = Jm(:,active);
@@ -213,8 +218,6 @@ end
 if p == 0
     iA = R \ (R' \ eye(size(A,1)));
     iA = (iA + iA')/2;
-else
-    iA = pinv(A);
 end
 end
 

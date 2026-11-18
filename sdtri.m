@@ -1,52 +1,49 @@
-function C = sdtri(B1, VARB1, EstimOpt)
-
-m1 = length(B1);
-[m2,m3] = size(VARB1);
-
-if m1 ~= m2 || m1 ~= m3 || m2 ~= m3
-    error('Dimentions of B, and VARB must agree.');
+function [C,correlations] = sdtri(B1,VARB1,EstimOpt,unitRows)
+% Latent marginal SDs and delta-method SEs for a column-packed lower factor.
+% The null of zero variance is a boundary hypothesis; no two-sided Wald p-value.
+B1 = B1(:);
+m = numel(B1);
+d = (sqrt(8*m+1)-1)/2;
+if d ~= floor(d) || ~isequal(size(VARB1),[m m]) || numel(EstimOpt.Dist)~=d
+    error('sdtri:Dimensions','Check dimensions of the factor, covariance and distributions.');
 end
-
-% Parameters with zero variance stay at B1, so factorise only the others;
-% a dense factorisation at full size would take hours with a large fixed block.
-act = diag(VARB1) ~= 0;
-VARB1 = full(VARB1(act,act));
-
-[~,err] = cholcov(VARB1);
-if err > 0
-    cprintf(rgb('DarkOrange'), 'WARNING: Approximation of the variance-covariance matrix is not positive semi-definite. \n')
-    cprintf(rgb('DarkOrange'), 'WARNING: Rescaling. Results may be inaccurate. You can try different Hessian approximation method. \n')
-    %     [V,D] = eig(VARB1);
-    %     V1 = V(:,1);
-    %     VARB1 = VARB1 + V1*V1'*(eps(D(1,1))-D(1,1));
-    VARB1 = nearestSPD(VARB1);
-end
-
-m0 = (sqrt(8*m1 + 1) - 1)/2;
-
-D = zeros(EstimOpt.NSdSim,m0);
-
-PRM = repmat(B1(:)',EstimOpt.NSdSim,1);
-if any(act)
-    PRM(:,act) = mvnrnd(reshape(B1(act),1,[]),VARB1,EstimOpt.NSdSim);
-end
-if isfield(EstimOpt,'BActive') == 1 && sum(EstimOpt.BActive(EstimOpt.NVarA+1:end)) > 0
-    PRM(:,EstimOpt.BActive(EstimOpt.NVarA+1:EstimOpt.NVarA+sum(1:EstimOpt.NVarA))'==0) = B1(EstimOpt.BActive(EstimOpt.NVarA+1:EstimOpt.NVarA+sum(1:EstimOpt.NVarA))==0,ones(EstimOpt.NSdSim,1))';
-end
-if sum(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5) > 0
-    PRM(:, EstimOpt.DiagIndex(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5)) = 1;
-end
-
-Vt = tril(ones(m0));
-Vt_t = Vt;
-for i = 1:EstimOpt.NSdSim
-    Vt_t(Vt==1) = PRM(i,:);
-    if sum(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5) > 0
-        tmp = sqrt(sum(Vt_t(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5,:).^2,2));
-        Vt_t(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5,:) = Vt_t(EstimOpt.Dist(2:end) >= 3 & EstimOpt.Dist(2:end) <= 5,:)./tmp(:, ones(1,m0));
+if nargin<4, unitRows = ismember(EstimOpt.Dist,[3:5 9:17]); end
+[row,~] = find(tril(true(d)));
+rows = accumarray(row,(1:m)',[],@(idx){sort(idx)});
+C = NaN(d,3);
+for i = 1:d
+    if unitRows(i)
+        C(i,1:2) = [1 0]; % standardized latent row in the likelihood
+        continue
     end
-    D(i,:) = sqrt(diag(Vt_t*Vt_t'))';
+    idx = rows{i};
+    v = B1(idx);
+    C(i,1) = norm(v);
+    if C(i,1)>0
+        derivative = v/C(i,1);
+        variance = derivative'*VARB1(idx,idx)*derivative;
+        if isfinite(variance) && variance>=0, C(i,2) = sqrt(variance); end
+    end
 end
 
-C = [mean(D); std(D)];
-C = [C; pv(mean(D),std(D))]';
+if nargout<2, return; end
+% Pair order is the strict lower triangle. Columns: i, j, latent rho, SE, p(rho=0).
+[i,j] = find(tril(true(d),-1));
+correlations = [i,j,NaN(length(i),3)];
+L = zeros(d);
+L(tril(true(d))) = B1;
+for k = 1:length(i)
+    a = i(k); b = j(k);
+    if ~all(ismember(EstimOpt.Dist([a b]),[0 1])) || any(C([a b],1)==0), continue; end
+    u = L(a,:)/C(a,1); v = L(b,:)/C(b,1);
+    rho = u*v';
+    correlations(k,3) = rho;
+    if abs(rho)>=1, continue; end
+    idx = [rows{a}(:);rows{b}(:)];
+    gradient = [(v(1:a)-rho*u(1:a))/C(a,1),(u(1:b)-rho*v(1:b))/C(b,1)]';
+    variance = gradient'*VARB1(idx,idx)*gradient;
+    if isfinite(variance) && variance>0
+        correlations(k,4:5) = [sqrt(variance),2*normcdf(-abs(rho)/sqrt(variance))];
+    end
+end
+end

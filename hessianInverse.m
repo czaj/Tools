@@ -1,6 +1,9 @@
-function [iH, diagnostics] = hessianInverse(H, label)
+function [iH, diagnostics] = hessianInverse(H, label, forInference)
 %HESSIANINVERSE Invert Hessian-like matrices with diagnostics.
 
+% DCE requests covariance of a negative log-likelihood on free parameters.
+% Other callers can still request the historical general matrix inverse.
+if nargin < 3, forInference = false; end
 if nargin < 2 || isempty(label)
     label = 'Hessian';
 end
@@ -14,6 +17,8 @@ diagnostics = struct( ...
     'isIllConditioned', false, ...
     'usedPinv', false, ...
     'method', '');
+
+if forInference, diagnostics.ValidInference = false; end
 
 if isempty(H)
     iH = H;
@@ -40,6 +45,28 @@ diagnostics.isSymmetric = norm(H - H','fro') <= symTol;
 diagnostics.rcond = rcond(H);
 diagnostics.rank = rank(H);
 diagnostics.isIllConditioned = diagnostics.rank < n || diagnostics.rcond < 1e-12;
+
+if forInference
+    iH = NaN(n);
+    diagnostics.method = 'invalid-curvature';
+    if diagnostics.isSymmetric && diagnostics.rank == n && diagnostics.rcond > eps
+        [R,flag] = chol((H+H')/2);
+        if flag == 0
+            covariance = R \ (R' \ eye(n));
+            if all(isfinite(covariance),'all')
+                iH = (covariance+covariance')/2;
+                diagnostics.ValidInference = true;
+                diagnostics.method = 'chol';
+            end
+        end
+    end
+    if ~diagnostics.ValidInference
+        warning('hessianInverse:InvalidInference','%s: free curvature is not numerically positive definite. SEs are unavailable.',label);
+    elseif diagnostics.isIllConditioned
+        warning('hessianInverse:IllConditioned','%s: check sensitivity of SEs (rcond=%.3g).',label,diagnostics.rcond);
+    end
+    return
+end
 
 if diagnostics.isIllConditioned
     warning('hessianInverse:IllConditioned', ...

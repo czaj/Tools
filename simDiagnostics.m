@@ -31,8 +31,7 @@ function [D,TailRows] = simDiagnostics(ess,NRep,rot,label,Thresholds)
 % Kish ESS describes weight concentration. A rotated-block Newton step is a
 % local sensitivity check. Independent full refits check coefficient and SE
 % stability. ISCeiling is the legacy name for R/medianESS (ESS units only).
-% DrawsSuggested retains the historical square-root extrapolation for callers;
-% its convergence rate and draw budget are unverified for a given integral.
+% DrawsSuggested remains present as NaN for existing readers.
 
 if nargin < 4 || isempty(label)
     label = 'Simulator';
@@ -52,6 +51,7 @@ D = struct( ...
     'MedianESSShare', NaN, ...
     'P05ESS', NaN, ...
     'MinESS', NaN, ...
+    'NUnassessed', NaN, ...
     'NBelowMinDraws', NaN, ...
     'ShareBelowMinDraws', NaN, ...
     'MinDraws', MinDraws, ...
@@ -82,8 +82,9 @@ elseif isempty(ess)
 else
     try
         e = ess(:);
-        e = e(isfinite(e));
         D.NP = numel(e);
+        e = e(isfinite(e));
+        D.NUnassessed = D.NP-numel(e);
         if isempty(e)
             D.ESSNote = 'no finite effective draw counts';
         else
@@ -94,7 +95,7 @@ else
                 D.MedianESSShare = D.MedianESS/D.NDraws;
             end
             D.NBelowMinDraws = sum(e < MinDraws);
-            D.ShareBelowMinDraws = D.NBelowMinDraws/numel(e);
+            D.ShareBelowMinDraws = D.NBelowMinDraws/D.NP;
             D.StarvedDraws = D.ShareBelowMinDraws > MaxShareBelow;
         end
     catch ME
@@ -119,8 +120,7 @@ else
     if isfield(rot,'PairedStepSE') && isfinite(rot.PairedStepSE)
         D.PairedStepSE = rot.PairedStepSE;
         D.DrawSetSpecific = D.PairedStepSE > MaxShiftSE;
-    elseif isfinite(D.RotatedStepSE)
-        D.DrawSetSpecific = D.RotatedStepSE > MaxShiftSE;
+
     end
 end
 
@@ -147,13 +147,10 @@ function D = simAdvice(D,MaxShiftSE)
 if isfinite(D.MedianESS) && D.MedianESS > 0 && isfinite(D.NDraws)
     D.ISCeiling = D.NDraws/D.MedianESS;
 end
-if isfinite(D.RotatedStepSE) && isfinite(D.NDraws) && D.RotatedStepSE > MaxShiftSE
-    D.DrawsSuggested = 2^ceil(log2(D.NDraws*(D.RotatedStepSE/MaxShiftSE)^2));
-end
 if D.DrawSetSpecific || D.StarvedDraws
     D.Advice = ['Check the original score and curvature. Refit from multiple starts on fixed draws, ', ...
         'then compare coefficients and SEs using independent draws or a different integration rule.'];
-elseif isfinite(D.RotatedStepSE)
+elseif isfinite(D.PairedStepSE)
     D.Advice = 'Small draw-sensitivity measure for one rotation. Use independent refits to assess coefficient and SE stability.';
 end
 end
@@ -171,6 +168,9 @@ if isfinite(D.MedianESS)
         sprintf('%d of %d (%.1f%%)',D.NBelowMinDraws,D.NP,100*D.ShareBelowMinDraws)}];
 elseif ~isempty(D.ESSNote)
     TailRows = [TailRows; {'Effective draws',['not available - ',D.ESSNote]}];
+end
+if D.NUnassessed > 0
+    TailRows = [TailRows; {'Respondents without ESS',sprintf('%d of %d',D.NUnassessed,D.NP)}];
 end
 if isfinite(D.RotatedStepSE) || isfinite(D.RotatedMaxAbsGradient)
     TailRows = [TailRows; {'Max |g|, other draws',numText(D.RotatedMaxAbsGradient)}];
