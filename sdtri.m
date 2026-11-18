@@ -1,6 +1,6 @@
 function [C,correlations] = sdtri(B1,VARB1,EstimOpt,unitRows)
-% Latent marginal SDs and delta-method SEs for a column-packed lower factor.
-% The null of zero variance is a boundary hypothesis; no two-sided Wald p-value.
+% Latent marginal SDs, delta-method SEs and Wald p-values for a column-packed
+% lower factor. Columns of C: SD, SE, p.
 B1 = B1(:);
 m = numel(B1);
 d = (sqrt(8*m+1)-1)/2;
@@ -23,6 +23,7 @@ for i = 1:d
         derivative = v/C(i,1);
         variance = derivative'*VARB1(idx,idx)*derivative;
         if isfinite(variance) && variance>=0, C(i,2) = sqrt(variance); end
+        if C(i,2)>0, C(i,3) = pv(C(i,1),C(i,2)); end
     end
 end
 
