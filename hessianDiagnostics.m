@@ -19,7 +19,7 @@ function [D,TailRows] = hessianDiagnostics(H,iH,g,J,BActive,label,Bounds)
 %    BActive - indicator of the parameters H refers to, one entry per
 %              parameter of the model
 %    label   - model name used in printed messages (e.g. 'MXL')
-%    Bounds  - (optional) acceptance interval for the median standard error
+%    Bounds  - (optional) warning interval for the median standard error
 %              ratio, default [0.8 1.25]
 %
 % Outputs:
@@ -31,13 +31,8 @@ function [D,TailRows] = hessianDiagnostics(H,iH,g,J,BActive,label,Bounds)
 % Diagnostics (the checklist of section 7.3 of the standard error report of
 % 14.11.2026, natural_england/outputs/DCE_se_diagnosis_v2_2026-11-14/):
 %    MedianSERatioBHHH - median over parameters of SE(BHHH)/SE(Hessian).
-%              This is the information matrix equality test. At a true
-%              maximum of a correctly specified likelihood it is about 1.
-%              A value far from 1 in a simulated model means the point
-%              maximizes the simulated likelihood of one particular set of
-%              draws rather than the likelihood itself, and that the
-%              standard errors are too small. Raising the number of draws
-%              by orders of magnitude does not repair it.
+%              Descriptive comparison of two curvature estimates. Finite samples,
+%              model specification and numerical integration can all affect it.
 %    MinEigHessian   - smallest eigenvalue of the observed Hessian; it has
 %              to be positive at a maximum.
 %    MaxAbsGradient  - largest absolute gradient element at the estimate.
@@ -148,10 +143,8 @@ try
 
     if D.SERatioOutsideBounds
         warning('hessianDiagnostics:InformationMatrixEquality', ...
-            ['%s: median SE(BHHH)/SE(Hessian) = %.3g is outside [%.2f, %.2f], so the ', ...
-            'information matrix equality fails - the reported point is most likely a maximum ', ...
-            'of this particular set of draws rather than of the true likelihood, and these ', ...
-            'standard errors are not fit for a table.'], ...
+            ['%s: median SE(BHHH)/SE(Hessian) = %.3g falls outside the descriptive range [%.2f, %.2f]. ', ...
+            'Inspect curvature and local convergence. For simulated models also compare independent refits.'], ...
             label,D.MedianSERatioBHHH,Bounds(1),Bounds(2));
     end
 catch ME
@@ -261,7 +254,7 @@ function txt = ratioText(D)
 if isfinite(D.MedianSERatioBHHH)
     txt = sprintf('%.4g',D.MedianSERatioBHHH);
     if D.SERatioOutsideBounds
-        txt = sprintf('%s   (outside [%.2f, %.2f] - standard errors not fit for a table)', ...
+        txt = sprintf('%s   (outside [%.2f, %.2f] - check curvature and stability)', ...
             txt,D.Bounds(1),D.Bounds(2));
     end
 elseif ~isempty(D.Note)

@@ -86,7 +86,12 @@ end
 try
     k = floor(NP/2);
     cols = mod((0:NP*NRep-1) + k*NRep,NP*NRep) + 1;
-    [~,j] = llFunE(Results.bhat,err(:,cols));
+    rotatedDraws = err(:,cols);
+    if isequaln(err,rotatedDraws)
+        rot = 'rotating these blocks leaves the draws identical; use an independently randomized sequence';
+        return
+    end
+    [~,j] = llFunE(Results.bhat,rotatedDraws);
     g = sum(j.*W,1)';
     g = full(g(:));
 
@@ -119,6 +124,7 @@ try
 
     rot = struct('MaxAbsGradient',max(abs(gv)),'MaxNewtonStepSE',NaN, ...
         'MedianNewtonStepSE',NaN,'Offset',k,'ReferenceMaxAbsGradient',NaN,'Note','');
+    gr = [];
     if isfield(Results,'g') && ~isempty(Results.g)
         gr = full(Results.g(:));
         if numel(gr) == numel(act) && numel(gr) ~= nH
@@ -126,7 +132,15 @@ try
         end
         rot.ReferenceMaxAbsGradient = max(abs(gr));
     end
-    step = quietSolve((H + H')/2,gv);
+    H = (H+H')/2;
+    if any(~isfinite(H(:))) || any(~isfinite(se)) || rcond(H) <= eps || min(eig(H)) <= 0
+        rot.Note = 'SE-scaled step unavailable: check the free-parameter curvature and covariance';
+        return
+    end
+    if numel(gr) == nH && all(isfinite(gr))
+        rot.PairedStepSE = max(abs(H\(gv-gr))./se);
+    end
+    step = H\gv;
     if ~isempty(step)
         stepSE = abs(step)./se;
         if any(isfinite(stepSE))
@@ -136,23 +150,6 @@ try
     end
 catch ME
     rot = ['the check failed: ',ME.message];
-end
-end
-
-
-function x = quietSolve(A,b)
-% A\b without a near-singularity warning; [] when it cannot be computed.
-x = [];
-if isempty(A) || isempty(b) || size(A,1) ~= size(A,2) || size(A,1) ~= numel(b)
-    return
-end
-if ~all(isfinite(A(:))) || ~all(isfinite(b(:)))
-    return
-end
-if rcond(A) < 1e-15
-    x = pinv(A)*b;
-else
-    x = A\b;
 end
 end
 

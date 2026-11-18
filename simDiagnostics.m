@@ -28,40 +28,11 @@ function [D,TailRows] = simDiagnostics(ess,NRep,rot,label,Thresholds)
 %    D        - struct of diagnostics, for Results.diagnostics
 %    TailRows - label/value rows for the Tail of the toolbox output
 %
-% Two questions are answered separately. How many of its draws does each
-% respondent's likelihood actually use (the concentration of the weights the
-% draws enter with)? And would an equally valid draw set put the optimum
-% somewhere else (the same data and parameters, with the draw blocks rotated
-% between respondents)? The first says how much simulation noise there is, the
-% second says whether it matters for what is reported. Nothing here changes an
-% estimate or a standard error.
-%
-% The effective draw count is conservative for quasi-random draws: it is the
-% independent-draw formula and ignores the variance reduction a balanced net
-% achieves. A high count is therefore reassuring, while a low one means the
-% weights are concentrated, not necessarily that the integration error is as
-% large as 1/sqrt(ess) suggests.
-%
-% It measures how hard the simulator is working; it is not a target to
-% optimise. It does bound what a better simulator could gain - no importance
-% sampler can be worth more than R/ess, since a proposal proportional to the
-% integrand would be worth R - but a proposal that raises the count need not
-% raise the accuracy by as much, or at all. DRAWS.md has the measurements.
-%
-% From the two numbers the output also says which remedy they point to, in
-% `D.Advice` and in the 'What to do' row: more draws (with `D.DrawsSuggested`,
-% the number implied by the square-root law, rounded up to a power of two and a
-% lower bound), a different specification (when that number is beyond what any
-% machine time buys, which is how a lognormal coefficient with a very wide
-% spread in WTP space shows up), or - only when `D.ISCeiling` = R/ess is of the
-% order of a hundred - a better simulator. This continues Czajkowski and
-% Budzinski (2019), "Simulation error in maximum likelihood estimation of
-% discrete choice models", Journal of Choice Modelling 31, which measured the
-% same error by re-estimating each model up to 1000 times over artificial data
-% and recommended more than 2000 Sobol draws at five attributes and more than
-% 20,000 at ten. The rotation test asks that question of one real model for the
-% price of one gradient, and its thresholds were calibrated against exactly
-% that paper's method.
+% Kish ESS describes weight concentration. A rotated-block Newton step is a
+% local sensitivity check. Independent full refits check coefficient and SE
+% stability. ISCeiling is the legacy name for R/medianESS (ESS units only).
+% DrawsSuggested retains the historical square-root extrapolation for callers;
+% its convergence rate and draw budget are unverified for a given integral.
 
 if nargin < 4 || isempty(label)
     label = 'Simulator';
@@ -86,6 +57,7 @@ D = struct( ...
     'MinDraws', MinDraws, ...
     'RotatedMaxAbsGradient', NaN, ...
     'RotatedStepSE', NaN, ...
+    'PairedStepSE', NaN, ...
     'RotatedMedianStepSE', NaN, ...
     'RotationOffset', NaN, ...
     'ReferenceMaxAbsGradient', NaN, ...
@@ -144,7 +116,10 @@ else
         D.ReferenceMaxAbsGradient = rot.ReferenceMaxAbsGradient;
     end
     if isfield(rot,'Note') && ~isempty(rot.Note), D.RotationNote = char(rot.Note); end
-    if isfinite(D.RotatedStepSE)
+    if isfield(rot,'PairedStepSE') && isfinite(rot.PairedStepSE)
+        D.PairedStepSE = rot.PairedStepSE;
+        D.DrawSetSpecific = D.PairedStepSE > MaxShiftSE;
+    elseif isfinite(D.RotatedStepSE)
         D.DrawSetSpecific = D.RotatedStepSE > MaxShiftSE;
     end
 end
@@ -158,84 +133,30 @@ TailRows = simTail(D);
 if D.StarvedDraws
     warning('simDiagnostics:StarvedDraws', ...
         ['%s: %.1f%% of respondents (%d of %d) have fewer than %g effective draws out of %d ', ...
-        '(the smallest is %.3g). For those respondents the simulated likelihood rests on a ', ...
-        'handful of draws, so its curvature is simulation noise rather than information. Raise ', ...
-        'the number of draws, or use a mixing distribution with a less extreme tail.'], ...
+        '(minimum %.3g). A few draws carry much of their simulated likelihood. ', ...
+        'Compare coefficients and standard errors across independent draw sequences.'], ...
         label,100*D.ShareBelowMinDraws,D.NBelowMinDraws,D.NP,MinDraws,D.NDraws,D.MinESS);
 end
 if D.DrawSetSpecific
     warning('simDiagnostics:DrawSetSpecific', ...
-        ['%s: rotating the respondents'' draw blocks moves the worst parameter by %.3g of its ', ...
-        'standard errors (median over parameters %.3g; max |gradient| %.3g against %.3g at the ', ...
-        'reported optimum). The reported point is a maximum of this particular draw set rather ', ...
-        'than of the likelihood, so the standard errors understate the uncertainty. What to do: ', ...
-        '%s. Check the estimates against a second draw sequence before reporting them.'], ...
-        label,D.RotatedStepSE,D.RotatedMedianStepSE,D.RotatedMaxAbsGradient, ...
-        D.ReferenceMaxAbsGradient,D.Advice);
+        '%s: draw sensitivity exceeds the %.3g SE check level. %s',label,MaxShiftSE,D.Advice);
 end
-
 end
-
 
 function D = simAdvice(D,MaxShiftSE)
-% Which of the three remedies the measured numbers point to: more draws, a
-% different specification, or - rarely - a better simulator.
-%
-% The number of draws comes from the square-root law: the simulation error falls
-% with the inverse square root of the draws, so cutting the shift by a factor k
-% takes k^2 times the draws. It is rounded up to a power of two, which is what
-% the Sobol generator prefers, and it is a lower bound twice over - the shift it
-% is computed from is itself a lower bound, and a scrambled Sobol net converges
-% a little faster than the law assumes.
-%
-% The ceiling for a better simulator is NDraws/MedianESS: a proposal
-% proportional to the integrand would make every draw count, and nothing can do
-% better than that. Measured in DRAWS.md: below about 10 an importance sampler
-% never repays its second likelihood pass, and at 22 it collected a ninth of its
-% ceiling, so it is only worth raising at two orders of magnitude.
 if isfinite(D.MedianESS) && D.MedianESS > 0 && isfinite(D.NDraws)
     D.ISCeiling = D.NDraws/D.MedianESS;
 end
 if isfinite(D.RotatedStepSE) && isfinite(D.NDraws) && D.RotatedStepSE > MaxShiftSE
-    need = D.NDraws*(D.RotatedStepSE/MaxShiftSE)^2;
-    D.DrawsSuggested = 2^ceil(log2(max(need,D.NDraws)));
+    D.DrawsSuggested = 2^ceil(log2(D.NDraws*(D.RotatedStepSE/MaxShiftSE)^2));
 end
-
-parts = cell(0,1);
-if D.DrawSetSpecific
-    if isfinite(D.DrawsSuggested) && D.DrawsSuggested > 1e5
-        parts{end+1,1} = sprintf(['the shift of %.3g SE would need at least %s draws to fall ', ...
-            'below %g SE, which is a specification problem rather than a simulator one: check ', ...
-            'the median SE(BHHH)/SE(H) and the spread of any lognormal parameter (a log ', ...
-            'standard deviation near 3 in WTP space is the measured failure) before spending ', ...
-            'that many draws'],D.RotatedStepSE,numText(D.DrawsSuggested),MaxShiftSE);
-    elseif isfinite(D.DrawsSuggested)
-        parts{end+1,1} = sprintf(['raise the draws to at least %s (a lower bound) and ', ...
-            're-estimate; if the shift does not fall roughly with the inverse square root of ', ...
-            'the draws, the specification is the problem, not the simulator'], ...
-            numText(D.DrawsSuggested));
-    else
-        parts{end+1,1} = ['raise the draws and re-estimate; if the shift does not fall roughly ', ...
-            'with the inverse square root of the draws, the specification is the problem, not ', ...
-            'the simulator'];
-    end
-elseif D.StarvedDraws
-    parts{end+1,1} = ['the estimates are stable across draw sets, but the starved respondents ', ...
-        'contribute noise rather than information: raise the draws, or use a mixing ', ...
-        'distribution with a less extreme tail'];
+if D.DrawSetSpecific || D.StarvedDraws
+    D.Advice = ['Check the original score and curvature. Refit from multiple starts on fixed draws, ', ...
+        'then compare coefficients and SEs using independent draws or a different integration rule.'];
 elseif isfinite(D.RotatedStepSE)
-    parts{end+1,1} = 'nothing - the estimates do not depend on which draws integrate whom';
-end
-if isfinite(D.ISCeiling) && D.ISCeiling >= 50 && (D.DrawSetSpecific || D.StarvedDraws)
-    parts{end+1,1} = sprintf(['a better simulator (importance sampling) could gain at most ', ...
-        '%.0f times here, which is the only range in which it has been worth writing one'], ...
-        D.ISCeiling);
-end
-if ~isempty(parts)
-    D.Advice = strjoin(parts,'; ');
+    D.Advice = 'Small draw-sensitivity measure for one rotation. Use independent refits to assess coefficient and SE stability.';
 end
 end
-
 
 function TailRows = simTail(D)
 TailRows = cell(0,2);
@@ -261,6 +182,12 @@ if isfinite(D.RotatedStepSE) || isfinite(D.RotatedMaxAbsGradient)
         txt = [txt,sprintf(', draw blocks rotated by %d respondents',D.RotationOffset)];
     end
     TailRows = [TailRows; {'Shift, other draws',txt}];
+    if isfinite(D.PairedStepSE)
+        TailRows = [TailRows; {'Paired score change',sprintf('max %.4g SE, original curvature',D.PairedStepSE)}];
+    end
+    if ~isempty(D.RotationNote)
+        TailRows = [TailRows; {'Rotation check',D.RotationNote}];
+    end
 elseif ~isempty(D.RotationNote)
     TailRows = [TailRows; {'Shift, other draws',['not available - ',D.RotationNote]}];
 end
